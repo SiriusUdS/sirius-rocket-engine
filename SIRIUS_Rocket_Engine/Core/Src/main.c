@@ -79,7 +79,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  __HAL_RCC_GPIOD_CLK_ENABLE();
+  
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -88,7 +88,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -103,11 +103,11 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
+  /*MX_I2C1_Init();
   MX_I2S2_Init();
   MX_I2S3_Init();
   MX_SPI1_Init();
-  MX_USB_HOST_Init();
+  MX_USB_HOST_Init();*/
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -116,8 +116,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    uint8_t test = 0;
     /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
+    //MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
   }
