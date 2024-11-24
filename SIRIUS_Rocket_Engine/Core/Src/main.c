@@ -85,7 +85,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  //__HAL_RCC_GPIOD_CLK_ENABLE();
+  
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -102,6 +102,10 @@ int main(void)
   MX_USB_HOST_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  Rocket rocket;
+
+  Rocket_Init(&rocket);
+
   if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
   {
     /* Starting Error */
@@ -259,7 +263,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 9599;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1000;
+  htim3.Init.Period = 10;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
