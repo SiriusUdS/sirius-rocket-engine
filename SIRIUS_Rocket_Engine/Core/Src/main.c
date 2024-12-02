@@ -102,9 +102,8 @@ int main(void)
   MX_USB_HOST_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-  //Rocket rocket;
 
-  //Rocket_init(&rocket);
+  Rocket_init();
 
   if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
   {

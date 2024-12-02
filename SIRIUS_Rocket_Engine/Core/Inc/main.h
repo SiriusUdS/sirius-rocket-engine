@@ -36,7 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-extern Rocket rocket;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

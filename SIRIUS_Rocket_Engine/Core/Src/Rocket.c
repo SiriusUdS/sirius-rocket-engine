@@ -1,10 +1,13 @@
 #include "../Inc/Rocket.h"
 
-uint8_t Rocket_Init(Rocket* instance) {
+static volatile Rocket rocket;
+
+uint8_t Rocket_init() {
+  rocket.test = 1;
   return 0;
 }
 
-uint8_t Rocket_executeIdle(Rocket* instance) {
+uint8_t Rocket_executeIdle() {
   uint8_t test = 0;
   return 0;
 }
