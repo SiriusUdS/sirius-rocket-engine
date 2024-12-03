@@ -2,12 +2,26 @@
 
 static volatile Rocket rocket;
 
-uint8_t Rocket_init() {
-  rocket.test = 1;
-  return 0;
+static void executeIdle();
+
+void Rocket_init() {
+  rocket.currentState = ROCKET_STATE_IDLE;
+  rocket.status.bits.notInitialized = 0;
 }
 
-uint8_t Rocket_executeIdle() {
-  uint8_t test = 0;
-  return 0;
+void Rocket_execute() {
+  switch (rocket.currentState) {
+    case ROCKET_STATE_IDLE:
+      executeIdle();
+      break;
+    default:
+      rocket.status.bits.invalidState = 1;
+      executeIdle();
+      break;
+  }
 }
+
+void executeIdle() {
+  
+}
+
