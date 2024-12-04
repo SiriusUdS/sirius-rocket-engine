@@ -1,25 +1,20 @@
 #pragma once
 
-#include "Sensors/PressureSensor.h"
+#include "../sirius-embedded-common/Inc/Sensors/PressureSensor/PressureSensor.h"
+#include "../sirius-embedded-common/sirius-headers-common/Engine/EngineStatus.h"
 
 #define PRESSURE_SENSOR_AMOUNT 1
+#define VALVE_AMOUNT 1
+#define TEMPERATURE_SENSOR_AMOUNT 8
 
-#define ENGINE_STATE_IDLE 0
-
-typedef union {
-  struct {
-    uint16_t notInitialized : 1;
-    uint16_t invalidState : 1;
-    uint16_t reserved : 14;
-  }
-  bits;
-  uint16_t value;
+typedef enum {
+  ENGINE_STATE_IDLE
 }
-EngineStatus;
+EngineState;
 
 typedef struct {
   EngineStatus status;
-  uint16_t currentState;
+  EngineState currentState;
   PressureSensor pressureSensors[PRESSURE_SENSOR_AMOUNT];
 }
 Engine;

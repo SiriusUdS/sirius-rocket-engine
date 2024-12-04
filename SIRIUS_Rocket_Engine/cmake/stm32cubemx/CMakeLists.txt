@@ -16,6 +16,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../USB_HOST/App
     ../../USB_HOST/Target
     ../../Core/Inc
+    ../../Core/sirius-embedded-common/Inc
     ../../Drivers/STM32F4xx_HAL_Driver/Inc
     ../../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
     ../../Middlewares/ST/STM32_USB_Host_Library/Core/Inc
@@ -25,8 +26,8 @@ target_include_directories(stm32cubemx INTERFACE
 )
 
 target_sources(stm32cubemx INTERFACE
-    ../../Core/Src/Sensors/PressureSensor.c
-    ../../Core/Src/Rocket.c
+    ../../Core/sirius-embedded-common/Src/PressureSensor/PressureSensor.c
+    ../../Core/Src/Engine.c
     ../../Core/Src/main.c
     ../../Core/Src/stm32f4xx_it.c
     ../../Core/Src/stm32f4xx_hal_msp.c
