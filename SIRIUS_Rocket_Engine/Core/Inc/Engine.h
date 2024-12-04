@@ -4,7 +4,7 @@
 
 #define PRESSURE_SENSOR_AMOUNT 1
 
-#define ROCKET_STATE_IDLE 0
+#define ENGINE_STATE_IDLE 0
 
 typedef union {
   struct {
@@ -15,15 +15,15 @@ typedef union {
   bits;
   uint16_t value;
 }
-RocketStatus;
+EngineStatus;
 
 typedef struct {
-  RocketStatus status;
+  EngineStatus status;
   uint16_t currentState;
   PressureSensor pressureSensors[PRESSURE_SENSOR_AMOUNT];
 }
-Rocket;
+Engine;
 
-extern void Rocket_init();
+extern void Engine_init();
 
-extern void Rocket_execute();
+extern void Engine_execute();
