@@ -1,0 +1,3 @@
+[submodule "SIRIUS_Rocket_Engine/Core/sirius-embedded-common"]
+	path = SIRIUS_Rocket_Engine/Core/sirius-embedded-common
+	url = https://github.com/SiriusUdS/sirius-embedded-common.git
