@@ -13,6 +13,9 @@ target_compile_definitions(stm32cubemx INTERFACE
 )
 
 target_include_directories(stm32cubemx INTERFACE
+    ../../Core/sirius-embedded-common/Src/PressureSensor/PressureSensor.c
+    ../../Core/Src/Engine.c
+    ../../Core/Src/main.c
     ../../USB_HOST/App
     ../../USB_HOST/Target
     ../../Core/Inc
