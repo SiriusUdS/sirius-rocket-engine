@@ -6,7 +6,11 @@ static void executeIdle();
 
 void Engine_init() {
   engine.currentState = ENGINE_STATE_IDLE;
-  engine.status.bits.notInitialized = 0;
+  engine.status.bits.initialized = 1;
+
+  for (uint8_t i = 0; i < VALVE_AMOUNT; i++) {
+    engine.valves->gatherData = Valve_initDefault;
+  }
 }
 
 void Engine_execute() {
@@ -22,6 +26,8 @@ void Engine_execute() {
 }
 
 void executeIdle() {
-  
+  for (uint8_t i = 0; i < VALVE_AMOUNT; i++) {
+    engine.valves->gatherData(&engine.valves[i]);
+  }
 }
 
