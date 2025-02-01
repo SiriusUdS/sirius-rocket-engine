@@ -4,6 +4,7 @@
 #include "../sirius-embedded-common/Inc/Device/Valve/Valve.h"
 
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineStatus.h"
+#include "../sirius-embedded-common/sirius-headers-common/Engine/EngineErrorStatus.h"
 
 #define PRESSURE_SENSOR_AMOUNT 1
 #define VALVE_AMOUNT 1
@@ -15,10 +16,12 @@ typedef enum {
 EngineState;
 
 typedef struct {
-  EngineStatus status;
-  EngineState currentState;
-  PressureSensor pressureSensors[PRESSURE_SENSOR_AMOUNT];
-  Valve valves[VALVE_AMOUNT];
+  EngineErrorStatus errorStatus;
+  EngineStatus      status;
+
+  EngineState       currentState;
+  PressureSensor    pressureSensors[PRESSURE_SENSOR_AMOUNT];
+  Valve             valves[VALVE_AMOUNT];
 }
 Engine;
 

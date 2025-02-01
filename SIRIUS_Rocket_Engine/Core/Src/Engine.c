@@ -6,7 +6,7 @@ static void executeIdle();
 
 void Engine_init() {
   engine.currentState = ENGINE_STATE_IDLE;
-  engine.status.bits.initialized = 1;
+  engine.errorStatus.value - 0;
 
   for (uint8_t i = 0; i < VALVE_AMOUNT; i++) {
     engine.valves->gatherData = Valve_initDefault;
@@ -19,7 +19,7 @@ void Engine_execute() {
       executeIdle();
       break;
     default:
-      engine.status.bits.invalidState = 1;
+      engine.errorStatus.bits.invalidState = 1;
       executeIdle();
       break;
   }
