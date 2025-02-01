@@ -13,25 +13,22 @@ target_compile_definitions(stm32cubemx INTERFACE
 )
 
 target_include_directories(stm32cubemx INTERFACE
-    ../../USB_HOST/App
-    ../../USB_HOST/Target
     ../../Core/Inc
     ../../Drivers/STM32F4xx_HAL_Driver/Inc
     ../../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
-    ../../Middlewares/ST/STM32_USB_Host_Library/Core/Inc
-    ../../Middlewares/ST/STM32_USB_Host_Library/Class/CDC/Inc
     ../../Drivers/CMSIS/Device/ST/STM32F4xx/Include
     ../../Drivers/CMSIS/Include
 )
 
 target_sources(stm32cubemx INTERFACE
+    ../../Core/sirius-embedded-common/Src/Sensor/PressureSensor/PressureSensor.c
+    ../../Core/sirius-embedded-common/Src/Device/Valve/Valve.c
     ../../Core/Src/main.c
     ../../Core/Src/stm32f4xx_it.c
     ../../Core/Src/stm32f4xx_hal_msp.c
-    ../../USB_HOST/App/usb_host.c
-    ../../USB_HOST/Target/usbh_conf.c
-    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_hcd.c
-    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_adc.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c
@@ -45,20 +42,14 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c
-    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c
-    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c
-    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_adc.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c_ex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_hcd.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c
     ../../Core/Src/system_stm32f4xx.c
-    ../../Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_core.c
-    ../../Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ctlreq.c
-    ../../Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_ioreq.c
-    ../../Middlewares/ST/STM32_USB_Host_Library/Core/Src/usbh_pipes.c
-    ../../Middlewares/ST/STM32_USB_Host_Library/Class/CDC/Src/usbh_cdc.c
     ../../Core/Src/sysmem.c
     ../../Core/Src/syscalls.c
     ../../startup_stm32f411xe.s
