@@ -53,6 +53,10 @@ HCD_HandleTypeDef hhcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
 
+PWM* pwms[ENGINE_PWM_AMOUNT];
+
+Valve* valves[ENGINE_VALVE_AMOUNT];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,6 +69,9 @@ static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USB_OTG_FS_HCD_Init(void);
 /* USER CODE BEGIN PFP */
+
+static void initPWMs();
+static void initValves();
 
 /* USER CODE END PFP */
 
@@ -110,7 +117,10 @@ int main(void)
   MX_USB_OTG_FS_HCD_Init();
   /* USER CODE BEGIN 2 */
 
-  Engine_init();
+  initPWMs();
+  initValves();
+
+  Engine_init(valves);
 
   if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
   {
@@ -554,7 +564,17 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void initPWMs() {
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX]->init = PWM_initDefault;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX]->externalInstance = &htim1;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX]->channel = TIM_CHANNEL_1;
+}
 
+void initValves() {
+  valves[ENGINE_IPA_VALVE_INDEX]->errorStatus.value = 0;
+  valves[ENGINE_IPA_VALVE_INDEX]->status.value = 0;
+  valves[ENGINE_IPA_VALVE_INDEX]->pwmDriver = pwms[ENGINE_IPA_VALVE_PWM_INDEX];
+}
 /* USER CODE END 4 */
 
 /**
