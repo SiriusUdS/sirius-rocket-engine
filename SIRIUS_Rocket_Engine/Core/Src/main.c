@@ -573,13 +573,25 @@ void setupPWMs() {
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].externalHandle = &htim1;
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].timer = TIM1;
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].channel = TIM_CHANNEL_1;
+
+  pwms[ENGINE_NOS_VALVE_PWM_INDEX].errorStatus.bits.notInitialized = 1;
+  pwms[ENGINE_NOS_VALVE_PWM_INDEX].init = (PWM_init)PWMHAL_init;
+  pwms[ENGINE_NOS_VALVE_PWM_INDEX].setDutyCycle = (PWM_setDutyCycle)PWMHAL_setDutyCycle;
+  pwms[ENGINE_NOS_VALVE_PWM_INDEX].externalHandle = &htim1;
+  pwms[ENGINE_NOS_VALVE_PWM_INDEX].timer = TIM1;
+  pwms[ENGINE_NOS_VALVE_PWM_INDEX].channel = TIM_CHANNEL_2;
 }
 
 void setupValves() {
   valves[ENGINE_IPA_VALVE_INDEX].init = (Valve_init)SG90_init;
   valves[ENGINE_IPA_VALVE_INDEX].setDutyCycle = (Valve_setDutyCycle)SG90_setDutyCycle;
   valves[ENGINE_IPA_VALVE_INDEX].gatherData = (Valve_gatherData)SG90_gatherData;
-  //valves[ENGINE_IPA_VALVE_INDEX].
+  valves[ENGINE_IPA_VALVE_INDEX].tick = (Valve_tick)SG90_tick;
+
+  valves[ENGINE_NOS_VALVE_INDEX].init = (Valve_init)SG90_init;
+  valves[ENGINE_NOS_VALVE_INDEX].setDutyCycle = (Valve_setDutyCycle)SG90_setDutyCycle;
+  valves[ENGINE_NOS_VALVE_INDEX].gatherData = (Valve_gatherData)SG90_gatherData;
+  valves[ENGINE_NOS_VALVE_INDEX].tick = (Valve_tick)SG90_tick;
 }
 /* USER CODE END 4 */
 
