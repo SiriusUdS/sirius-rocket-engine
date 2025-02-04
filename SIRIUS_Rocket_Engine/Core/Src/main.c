@@ -569,12 +569,17 @@ static void MX_GPIO_Init(void)
 void setupPWMs() {
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].errorStatus.bits.notInitialized = 1;
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].init = (PWM_init)PWMHAL_init;
-  pwms[ENGINE_IPA_VALVE_PWM_INDEX].externalInstance = &htim1;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX].setDutyCycle = (PWM_setDutyCycle)PWMHAL_setDutyCycle;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX].externalHandle = &htim1;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX].timer = TIM1;
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].channel = TIM_CHANNEL_1;
 }
 
 void setupValves() {
   valves[ENGINE_IPA_VALVE_INDEX].init = (Valve_init)SG90_init;
+  valves[ENGINE_IPA_VALVE_INDEX].setDutyCycle = (Valve_setDutyCycle)SG90_setDutyCycle;
+  valves[ENGINE_IPA_VALVE_INDEX].gatherData = (Valve_gatherData)SG90_gatherData;
+  //valves[ENGINE_IPA_VALVE_INDEX].
 }
 /* USER CODE END 4 */
 
