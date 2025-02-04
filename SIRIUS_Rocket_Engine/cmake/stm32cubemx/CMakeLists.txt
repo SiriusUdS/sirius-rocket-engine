@@ -23,6 +23,10 @@ target_include_directories(stm32cubemx INTERFACE
 target_sources(stm32cubemx INTERFACE
     ../../Core/sirius-embedded-common/Src/Sensor/PressureSensor/PressureSensor.c
     ../../Core/sirius-embedded-common/Src/Device/Valve/Valve.c
+    ../../Core/sirius-embedded-common/Src/Device/Valve/SG90.c
+    ../../Core/sirius-embedded-common/Src/Device/Valve/HBL388.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/PWM/PWM.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/PWM/PWMHAL.c
     ../../Core/Src/Engine.c
     ../../Core/Src/main.c
     ../../Core/Src/stm32f4xx_it.c

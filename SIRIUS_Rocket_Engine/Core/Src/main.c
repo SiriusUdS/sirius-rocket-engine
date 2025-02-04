@@ -53,9 +53,9 @@ HCD_HandleTypeDef hhcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
 
-PWM* pwms[ENGINE_PWM_AMOUNT];
+PWM pwms[ENGINE_PWM_AMOUNT] = {0};
 
-Valve* valves[ENGINE_VALVE_AMOUNT];
+Valve valves[ENGINE_VALVE_AMOUNT] = {0};
 
 /* USER CODE END PV */
 
@@ -70,8 +70,8 @@ static void MX_TIM1_Init(void);
 static void MX_USB_OTG_FS_HCD_Init(void);
 /* USER CODE BEGIN PFP */
 
-static void initPWMs();
-static void initValves();
+static void setupPWMs();
+static void setupValves();
 
 /* USER CODE END PFP */
 
@@ -117,10 +117,10 @@ int main(void)
   MX_USB_OTG_FS_HCD_Init();
   /* USER CODE BEGIN 2 */
 
-  initPWMs();
-  initValves();
+  setupPWMs();
+  setupValves();
 
-  Engine_init(valves);
+  Engine_init(pwms, valves);
 
   if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
   {
@@ -564,16 +564,17 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void initPWMs() {
-  pwms[ENGINE_IPA_VALVE_PWM_INDEX]->init = PWM_initDefault;
-  pwms[ENGINE_IPA_VALVE_PWM_INDEX]->externalInstance = &htim1;
-  pwms[ENGINE_IPA_VALVE_PWM_INDEX]->channel = TIM_CHANNEL_1;
+
+// These should only link HAL to instance and set base function pointers
+void setupPWMs() {
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX].errorStatus.bits.notInitialized = 1;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX].init = (PWM_init)PWMHAL_init;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX].externalInstance = &htim1;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX].channel = TIM_CHANNEL_1;
 }
 
-void initValves() {
-  valves[ENGINE_IPA_VALVE_INDEX]->errorStatus.value = 0;
-  valves[ENGINE_IPA_VALVE_INDEX]->status.value = 0;
-  valves[ENGINE_IPA_VALVE_INDEX]->pwmDriver = pwms[ENGINE_IPA_VALVE_PWM_INDEX];
+void setupValves() {
+  valves[ENGINE_IPA_VALVE_INDEX].init = (Valve_init)SG90_init;
 }
 /* USER CODE END 4 */
 
@@ -589,6 +590,7 @@ void Error_Handler(void)
   while (1)
   {
   }
+  
   /* USER CODE END Error_Handler_Debug */
 }
 
