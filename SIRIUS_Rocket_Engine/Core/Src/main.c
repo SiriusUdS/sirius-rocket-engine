@@ -72,6 +72,8 @@ static void MX_USB_OTG_FS_HCD_Init(void);
 
 static void setupPWMs();
 static void setupValves();
+static void setupADCs();
+static void setupUART();
 
 /* USER CODE END PFP */
 
@@ -592,6 +594,10 @@ void setupValves() {
   valves[ENGINE_NOS_VALVE_INDEX].setDutyCycle = (Valve_setDutyCycle)SG90_setDutyCycle;
   valves[ENGINE_NOS_VALVE_INDEX].gatherData = (Valve_gatherData)SG90_gatherData;
   valves[ENGINE_NOS_VALVE_INDEX].tick = (Valve_tick)SG90_tick;
+}
+
+void setupADCs() {
+
 }
 /* USER CODE END 4 */
 
