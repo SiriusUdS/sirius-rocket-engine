@@ -585,11 +585,13 @@ void setupPWMs() {
 }
 
 void setupValves() {
+  valves[ENGINE_IPA_VALVE_INDEX].errorStatus.bits.notInitialized = 1;
   valves[ENGINE_IPA_VALVE_INDEX].init = (Valve_init)SG90_init;
   valves[ENGINE_IPA_VALVE_INDEX].setDutyCycle = (Valve_setDutyCycle)SG90_setDutyCycle;
   valves[ENGINE_IPA_VALVE_INDEX].gatherData = (Valve_gatherData)SG90_gatherData;
   valves[ENGINE_IPA_VALVE_INDEX].tick = (Valve_tick)SG90_tick;
 
+  valves[ENGINE_NOS_VALVE_INDEX].errorStatus.bits.notInitialized = 1;
   valves[ENGINE_NOS_VALVE_INDEX].init = (Valve_init)SG90_init;
   valves[ENGINE_NOS_VALVE_INDEX].setDutyCycle = (Valve_setDutyCycle)SG90_setDutyCycle;
   valves[ENGINE_NOS_VALVE_INDEX].gatherData = (Valve_gatherData)SG90_gatherData;
@@ -597,7 +599,7 @@ void setupValves() {
 }
 
 void setupADCs() {
-
+  
 }
 /* USER CODE END 4 */
 
