@@ -6,6 +6,7 @@
 #include "../sirius-embedded-common/Inc/Device/Valve/HBL388.h"
 
 #include "../sirius-embedded-common/Inc/LowLevelDriver/PWM/PWMHAL.h"
+#include "../sirius-embedded-common/Inc/LowLevelDriver/ADC/ADC12HAL.h"
 
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineStatus.h"
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineErrorStatus.h"
@@ -24,6 +25,7 @@ typedef struct {
   EngineState       currentState;
   PressureSensor    pressureSensors[PRESSURE_SENSOR_AMOUNT];
 
+  ADC12*            adcs;
   PWM  *            pwms;
   Valve*            valves;
 }

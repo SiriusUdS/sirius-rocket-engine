@@ -52,7 +52,7 @@ TIM_HandleTypeDef htim3;
 HCD_HandleTypeDef hhcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
-
+ADC12 adcs[ENGINE_ADC_CHANNEL_AMOUNT] = {0};
 PWM pwms[ENGINE_PWM_AMOUNT] = {0};
 
 Valve valves[ENGINE_VALVE_AMOUNT] = {0};
@@ -119,6 +119,7 @@ int main(void)
   MX_USB_OTG_FS_HCD_Init();
   /* USER CODE BEGIN 2 */
 
+  setupADCs();
   setupPWMs();
   setupValves();
 
@@ -599,6 +600,10 @@ void setupValves() {
 }
 
 void setupADCs() {
+  
+}
+
+void setupUART() {
   
 }
 /* USER CODE END 4 */
