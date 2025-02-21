@@ -23,8 +23,8 @@ void Engine_init(PWM* pwms, Valve* valves) {
   engine.pwms   = pwms;
   engine.valves = valves;
 
-  initPWMs();
   initValves();
+  initPWMs();
 }
 
 void initPWMs() {

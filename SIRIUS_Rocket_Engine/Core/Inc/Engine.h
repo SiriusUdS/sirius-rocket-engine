@@ -15,18 +15,16 @@
 
 #define FUNCTION_NULL_POINTER 0
 
-#define PRESSURE_SENSOR_AMOUNT 1
-#define TEMPERATURE_SENSOR_AMOUNT 8
-
 typedef struct {
   EngineErrorStatus errorStatus;
   EngineStatus      status;
 
   EngineState       currentState;
-  PressureSensor    pressureSensors[PRESSURE_SENSOR_AMOUNT];
+  PressureSensor    pressureSensors[ENGINE_PRESSURE_SENSOR_AMOUNT];
 
   ADC12*            adcs;
   PWM  *            pwms;
+
   Valve*            valves;
 }
 Engine;
