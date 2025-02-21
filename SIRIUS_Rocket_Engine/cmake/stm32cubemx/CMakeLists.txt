@@ -21,16 +21,24 @@ target_include_directories(stm32cubemx INTERFACE
 )
 
 target_sources(stm32cubemx INTERFACE
+    ../../Core/sirius-embedded-common/Src/Sensor/TemperatureSensor/TemperatureSensor.c
     ../../Core/sirius-embedded-common/Src/Sensor/PressureSensor/PressureSensor.c
     ../../Core/sirius-embedded-common/Src/Device/Valve/Valve.c
     ../../Core/sirius-embedded-common/Src/Device/Valve/SG90.c
     ../../Core/sirius-embedded-common/Src/Device/Valve/HBL388.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12HAL.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/GPIO/GPIO.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/GPIO/GPIOHAL.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/UART/UART.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/UART/UARTHAL.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/PWM/PWM.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/PWM/PWMHAL.c
     ../../Core/Src/Engine.c
     ../../Core/Src/main.c
     ../../Core/Src/stm32f4xx_it.c
     ../../Core/Src/stm32f4xx_hal_msp.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_adc.c

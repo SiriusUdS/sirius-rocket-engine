@@ -1,12 +1,15 @@
 #pragma once
 
 #include "../sirius-embedded-common/Inc/Sensor/PressureSensor/PressureSensor.h"
+#include "../sirius-embedded-common/Inc/Sensor/TemperatureSensor/TemperatureSensor.h"
 
 #include "../sirius-embedded-common/Inc/Device/Valve/SG90.h"
 #include "../sirius-embedded-common/Inc/Device/Valve/HBL388.h"
 
+#include "../sirius-embedded-common/Inc/LowLevelDriver/GPIO/GPIOHAL.h"
 #include "../sirius-embedded-common/Inc/LowLevelDriver/PWM/PWMHAL.h"
 #include "../sirius-embedded-common/Inc/LowLevelDriver/ADC/ADC12HAL.h"
+#include "../sirius-embedded-common/Inc/LowLevelDriver/UART/UARTHAL.h"
 
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineStatus.h"
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineErrorStatus.h"
