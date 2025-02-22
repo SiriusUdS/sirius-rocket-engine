@@ -1,7 +1,10 @@
 #pragma once
 
 #include "../sirius-embedded-common/Inc/Sensor/PressureSensor/PressureSensor.h"
-#include "../sirius-embedded-common/Inc/Sensor/TemperatureSensor/TemperatureSensor.h"
+#include "../sirius-embedded-common/sirius-headers-common/PressureSensor/PressureSensorData.h"
+
+#include "../sirius-embedded-common/Inc/Sensor/TemperatureSensor/Thermistance.h"
+#include "../sirius-embedded-common/sirius-headers-common/TemperatureSensor/TemperatureSensorData.h"
 
 #include "../sirius-embedded-common/Inc/Device/Valve/SG90.h"
 #include "../sirius-embedded-common/Inc/Device/Valve/HBL388.h"
@@ -16,6 +19,8 @@
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineSensors.h"
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineState.h"
 
+#include "stm32f4xx_hal.h"
+
 #define FUNCTION_NULL_POINTER 0
 
 typedef struct {
@@ -23,15 +28,19 @@ typedef struct {
   EngineStatus      status;
 
   EngineState       currentState;
-  PressureSensor    pressureSensors[ENGINE_PRESSURE_SENSOR_AMOUNT];
+  
+  PressureSensorData    pressureSensorsCurrentData[ENGINE_PRESSURE_SENSOR_AMOUNT];
+  TemperatureSensorData temperatureSensorsCurrentData[ENGINE_THERMISTANCE_AMOUNT];
 
   ADC12*            adcs;
   PWM  *            pwms;
 
-  Valve*            valves;
+  Valve*             valves;
+  TemperatureSensor* temperatureSensors;
+  PressureSensor*    pressureSensors;
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, Valve* valves);
+extern void Engine_init(PWM* pwms, ADC12* adcs, Valve* valves, TemperatureSensor* temperatureSensors);
 
 extern void Engine_execute();
