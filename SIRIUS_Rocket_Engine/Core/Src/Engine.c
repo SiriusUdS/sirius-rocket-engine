@@ -102,7 +102,7 @@ void tickValves() {
 
 void tickThermistances() {
   for (uint8_t i = 0; i < ENGINE_THERMISTANCE_AMOUNT; i++) {
-    //engine.temperatureSensorsCurrentData[i] = engine.temperatureSensors[i].readData((struct TemperatureSensor*)&engine.temperatureSensors[i]);
+    engine.temperatureSensorsCurrentData[i] = engine.temperatureSensors[i].readData((struct TemperatureSensor*)&engine.temperatureSensors[i]);
   }
 }
 
@@ -156,7 +156,7 @@ void executeIgnition() {
   if (!engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isOpening && !engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isClosing)
   {
     engine.currentState = ENGINE_STATE_POWERED_FLIGHT;
-    HAL_Delay(2000);
+    //HAL_Delay(2000);
   }
 }
 
@@ -169,7 +169,7 @@ void executePoweredFlight() {
   if (!engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isOpening && !engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isClosing)
   {
     engine.currentState = ENGINE_STATE_IGNITION;
-    HAL_Delay(2000);
+    //HAL_Delay(2000);
   }
 }
 
