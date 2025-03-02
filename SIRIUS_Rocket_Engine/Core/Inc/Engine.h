@@ -32,7 +32,7 @@ typedef struct {
   PressureSensorData    pressureSensorsCurrentData[ENGINE_PRESSURE_SENSOR_AMOUNT];
   TemperatureSensorData temperatureSensorsCurrentData[ENGINE_THERMISTANCE_AMOUNT];
 
-  ADC12*            adcs;
+  ADC12*            adc;
   PWM  *            pwms;
 
   Valve*             valves;
@@ -41,6 +41,6 @@ typedef struct {
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, ADC12* adcs, Valve* valves, TemperatureSensor* temperatureSensors);
+extern void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temperatureSensors);
 
 extern void Engine_execute();

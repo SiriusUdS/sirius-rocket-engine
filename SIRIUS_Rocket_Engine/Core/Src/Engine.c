@@ -10,7 +10,7 @@ static void executeUnpoweredFlight();
 static void executeAbort();
 
 static void initPWMs();
-static void initADCs();
+static void initADC();
 static void initGPIOs();
 static void initUARTs();
 
@@ -20,14 +20,14 @@ static void initThermistances();
 static void tickValves();
 static void tickThermistances();
 
-void Engine_init(PWM* pwms, ADC12* adcs, Valve* valves, TemperatureSensor* temperatureSensors) {
+void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temperatureSensors) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_IDLE;
   
 
   engine.pwms   = pwms;
-  engine.adcs   = adcs;
+  engine.adc    = adc;
 
   engine.valves = valves;
   engine.temperatureSensors = temperatureSensors;
@@ -35,7 +35,7 @@ void Engine_init(PWM* pwms, ADC12* adcs, Valve* valves, TemperatureSensor* tempe
   initValves();
   initThermistances();
 
-  initADCs();
+  initADC();
   initPWMs();
 }
 
@@ -50,14 +50,21 @@ void initPWMs() {
   }
 }
 
-void initADCs() {
+void initADC() {
+  if (engine.adc->init == FUNCTION_NULL_POINTER) {
+    engine.adc->errorStatus.bits.nullFunctionPointer = 1;
+  }
+  else {
+    engine.adc->init(engine.adc, ENGINE_ADC_CHANNEL_AMOUNT);
+  }
+
   for (uint8_t i = 0; i < ENGINE_ADC_CHANNEL_AMOUNT; i++) {
-    if (engine.adcs[i].init == FUNCTION_NULL_POINTER) {
-      engine.adcs[i].errorStatus.bits.nullFunctionPointer = 1;
+    if (engine.adc->channels[i].init == FUNCTION_NULL_POINTER) {
+      engine.adc->channels[i].errorStatus.bits.nullFunctionPointer = 1;
       continue;
     }
 
-    engine.adcs[i].init((struct ADC12*)&engine.adcs[i]);
+    engine.adc->channels[i].init((struct ADC12*)&engine.adc->channels[i]);
   }
 }
 
@@ -75,14 +82,14 @@ void initValves() {
 }
 
 void initThermistances() {
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].adc = &engine.adcs[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_INDEX].adc = &engine.adcs[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_3_THERMISTANCE_INDEX].adc = &engine.adcs[ENGINE_COMBUSTION_CHAMBER_3_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_4_THERMISTANCE_INDEX].adc = &engine.adcs[ENGINE_COMBUSTION_CHAMBER_4_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_5_THERMISTANCE_INDEX].adc = &engine.adcs[ENGINE_COMBUSTION_CHAMBER_5_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_6_THERMISTANCE_INDEX].adc = &engine.adcs[ENGINE_COMBUSTION_CHAMBER_6_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_7_THERMISTANCE_INDEX].adc = &engine.adcs[ENGINE_COMBUSTION_CHAMBER_7_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_8_THERMISTANCE_INDEX].adc = &engine.adcs[ENGINE_COMBUSTION_CHAMBER_8_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_3_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_3_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_4_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_4_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_5_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_5_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_6_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_6_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_7_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_7_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_8_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_8_THERMISTANCE_ADC_CHANNEL_INDEX];
 
   for (uint8_t i = 0; i < ENGINE_THERMISTANCE_AMOUNT; i++) {
     if (engine.temperatureSensors[i].init == FUNCTION_NULL_POINTER) {
@@ -156,7 +163,6 @@ void executeIgnition() {
   if (!engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isOpening && !engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isClosing)
   {
     engine.currentState = ENGINE_STATE_POWERED_FLIGHT;
-    //HAL_Delay(2000);
   }
 }
 
@@ -169,7 +175,6 @@ void executePoweredFlight() {
   if (!engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isOpening && !engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isClosing)
   {
     engine.currentState = ENGINE_STATE_IGNITION;
-    //HAL_Delay(2000);
   }
 }
 
