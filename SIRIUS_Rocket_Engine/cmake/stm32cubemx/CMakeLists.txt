@@ -16,6 +16,10 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Core/Inc
     ../../Drivers/STM32F4xx_HAL_Driver/Inc
     ../../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+    ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
+    ../../Middlewares/ST/STM32_USB_Device_Library/Core/Inc
+    ../../USB_DEVICE/App
+    ../../USB_DEVICE/Target
     ../../Drivers/CMSIS/Device/ST/STM32F4xx/Include
     ../../Drivers/CMSIS/Include
 )
@@ -40,6 +44,14 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/PWM/PWMHAL.c
     ../../Core/Src/Engine.c
     ../../Core/Src/main.c
+    ../../USB_DEVICE/App/usb_device.c
+    ../../USB_DEVICE/App/usbd_cdc_if.c
+    ../../USB_DEVICE/App/usbd_desc.c
+    ../../USB_DEVICE/Target/usbd_conf.c
+    ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
+    ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c
+    ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c
+    ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
     ../../Core/Src/stm32f4xx_it.c
     ../../Core/Src/stm32f4xx_hal_msp.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
@@ -65,6 +77,8 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_hcd.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c
     ../../Core/Src/system_stm32f4xx.c
     ../../Core/Src/sysmem.c
