@@ -1,12 +1,11 @@
 #pragma once
 
-#include "../sirius-embedded-common/Inc/Sensor/PressureSensor/PressureSensor.h"
+#include "../sirius-embedded-common/Inc/Sensor/PressureSensor/ETM375.h"
 #include "../sirius-embedded-common/sirius-headers-common/PressureSensor/PressureSensorData.h"
 
 #include "../sirius-embedded-common/Inc/Sensor/TemperatureSensor/NTC3950.h"
 #include "../sirius-embedded-common/sirius-headers-common/TemperatureSensor/TemperatureSensorData.h"
 
-#include "../sirius-embedded-common/Inc/Device/Valve/SG90.h"
 #include "../sirius-embedded-common/Inc/Device/Valve/HBL388.h"
 
 #include "../sirius-embedded-common/Inc/LowLevelDriver/GPIO/GPIOHAL.h"
@@ -28,9 +27,6 @@ typedef struct {
   EngineStatus      status;
 
   EngineState       currentState;
-  
-  PressureSensorData    pressureSensorsCurrentData[ENGINE_PRESSURE_SENSOR_AMOUNT];
-  TemperatureSensorData temperatureSensorsCurrentData[ENGINE_THERMISTANCE_AMOUNT];
 
   ADC12*            adc;
   PWM  *            pwms;
@@ -43,4 +39,6 @@ Engine;
 
 extern void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temperatureSensors);
 
-extern void Engine_execute();
+extern void Engine_tick(uint32_t timestamp_ms);
+
+extern void Engine_execute(uint32_t timestamp_ms);

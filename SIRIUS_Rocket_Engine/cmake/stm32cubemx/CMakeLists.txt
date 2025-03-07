@@ -30,7 +30,6 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/sirius-embedded-common/Src/Sensor/PressureSensor/PressureSensor.c
     ../../Core/sirius-embedded-common/Src/Sensor/PressureSensor/ETM375.c
     ../../Core/sirius-embedded-common/Src/Device/Valve/Valve.c
-    ../../Core/sirius-embedded-common/Src/Device/Valve/SG90.c
     ../../Core/sirius-embedded-common/Src/Device/Valve/HBL388.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12Channel.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12ChannelHAL.c

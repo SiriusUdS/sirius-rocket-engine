@@ -2,12 +2,13 @@
 
 static volatile Engine engine;
 
-static void executeIdle();
-static void executeArmed();
-static void executeIgnition();
-static void executePoweredFlight();
-static void executeUnpoweredFlight();
-static void executeAbort();
+static void executeInit(uint32_t timestamp_ms);
+static void executeIdle(uint32_t timestamp_ms);
+static void executeArmed(uint32_t timestamp_ms);
+static void executeIgnition(uint32_t timestamp_ms);
+static void executePoweredFlight(uint32_t timestamp_ms);
+static void executeUnpoweredFlight(uint32_t timestamp_ms);
+static void executeAbort(uint32_t timestamp_ms);
 
 static void initPWMs();
 static void initADC();
@@ -15,15 +16,15 @@ static void initGPIOs();
 static void initUARTs();
 
 static void initValves();
-static void initThermistances();
+static void initTemperatureSensors();
 
-static void tickValves();
-static void tickThermistances();
+static void tickValves(uint32_t timestamp_ms);
+static void tickTemperatureSensors();
 
 void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temperatureSensors) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
-  engine.currentState       = ENGINE_STATE_IDLE;
+  engine.currentState       = ENGINE_STATE_INIT;
   
 
   engine.pwms   = pwms;
@@ -33,10 +34,78 @@ void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temper
   engine.temperatureSensors = temperatureSensors;
 
   initValves();
-  initThermistances();
+  initTemperatureSensors();
 
   initADC();
   initPWMs();
+}
+
+void Engine_tick(uint32_t timestamp_ms) {
+  tickTemperatureSensors(timestamp_ms);
+  tickValves(timestamp_ms);
+
+  Engine_execute(timestamp_ms);
+}
+
+void Engine_execute(uint32_t timestamp_ms) {
+  switch (engine.currentState) {
+    case ENGINE_STATE_INIT:
+      executeInit(timestamp_ms);
+      break;
+    case ENGINE_STATE_IDLE:
+      executeIdle(timestamp_ms);
+      break;
+    case ENGINE_STATE_ARMED:
+      executeArmed(timestamp_ms);
+      break;
+    case ENGINE_STATE_IGNITION:
+      executeIgnition(timestamp_ms);
+      break;
+    case ENGINE_STATE_POWERED_FLIGHT:
+      executePoweredFlight(timestamp_ms);
+      break;
+    case ENGINE_STATE_UNPOWERED_FLIGHT:
+      executeUnpoweredFlight(timestamp_ms);
+      break;
+    case ENGINE_STATE_ABORT:
+      executeAbort(timestamp_ms);
+      break;
+    default:
+      engine.errorStatus.bits.invalidState = 1;
+      executeIdle(timestamp_ms);
+      break;
+  }
+}
+
+void executeInit(uint32_t timestamp_ms) {
+  for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
+    engine.valves[i].close((struct Valve*)&engine.valves[i], timestamp_ms);
+  }
+  engine.currentState = ENGINE_STATE_IDLE;
+}
+
+void executeIdle(uint32_t timestamp_ms) {
+  // Wait for arming command, collect data
+}
+
+void executeArmed(uint32_t timestamp_ms) {
+  // Wait for ignition command, completely armed
+}
+
+void executeIgnition(uint32_t timestamp_ms) {
+  engine.valves[ENGINE_IPA_VALVE_INDEX].open((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
+}
+
+void executePoweredFlight(uint32_t timestamp_ms) {
+  // save as much data as possible
+}
+
+void executeUnpoweredFlight(uint32_t timestamp_ms) {
+  // stay mostly idle
+}
+
+void executeAbort(uint32_t timestamp_ms) {
+  // Check flowcharts for wtf to do
 }
 
 void initPWMs() {
@@ -55,7 +124,7 @@ void initADC() {
     engine.adc->errorStatus.bits.nullFunctionPointer = 1;
   }
   else {
-    engine.adc->init(engine.adc, ENGINE_ADC_CHANNEL_AMOUNT);
+    engine.adc->init((struct ADC12*)&engine.adc, ENGINE_ADC_CHANNEL_AMOUNT);
   }
 
   for (uint8_t i = 0; i < ENGINE_ADC_CHANNEL_AMOUNT; i++) {
@@ -64,7 +133,7 @@ void initADC() {
       continue;
     }
 
-    engine.adc->channels[i].init((struct ADC12*)&engine.adc->channels[i]);
+    engine.adc->channels[i].init((struct ADC12Channel*)&engine.adc->channels[i]);
   }
 }
 
@@ -81,7 +150,7 @@ void initValves() {
   }
 }
 
-void initThermistances() {
+void initTemperatureSensors() {
   engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX];
   engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_ADC_CHANNEL_INDEX];
   engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_3_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_3_THERMISTANCE_ADC_CHANNEL_INDEX];
@@ -101,87 +170,14 @@ void initThermistances() {
   }
 }
 
-void tickValves() {
+void tickValves(uint32_t timestamp_ms) {
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
-    engine.valves[i].tick((struct Valve*)&engine.valves[i]);
+    engine.valves[i].tick((struct Valve*)&engine.valves[i], timestamp_ms);
   }
 }
 
-void tickThermistances() {
+void tickTemperatureSensors() {
   for (uint8_t i = 0; i < ENGINE_THERMISTANCE_AMOUNT; i++) {
-    engine.temperatureSensorsCurrentData[i] = engine.temperatureSensors[i].readData((struct TemperatureSensor*)&engine.temperatureSensors[i]);
+    engine.temperatureSensors[i].tick((struct TemperatureSensor*)&engine.temperatureSensors[i]);
   }
-}
-
-void Engine_execute() {
-  switch (engine.currentState) {
-    case ENGINE_STATE_IDLE:
-      executeIdle();
-      break;
-    case ENGINE_STATE_ARMED:
-      executeArmed();
-      break;
-    case ENGINE_STATE_IGNITION:
-      executeIgnition();
-      break;
-    case ENGINE_STATE_POWERED_FLIGHT:
-      executePoweredFlight();
-      break;
-    case ENGINE_STATE_UNPOWERED_FLIGHT:
-      executeUnpoweredFlight();
-      break;
-    case ENGINE_STATE_ABORT:
-      executeAbort();
-      break;
-    default:
-      engine.errorStatus.bits.invalidState = 1;
-      executeIdle();
-      break;
-  }
-}
-
-void executeIdle() {
-  tickThermistances();
-  tickValves();
-
-  engine.currentState = ENGINE_STATE_ARMED;
-}
-
-void executeArmed() {
-  tickThermistances();
-  tickValves();
-
-  engine.currentState = ENGINE_STATE_IGNITION;
-}
-
-void executeIgnition() {
-  tickThermistances();
-
-  engine.valves[ENGINE_IPA_VALVE_INDEX].setDutyCycle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], 28);
-  tickValves();
-  
-  if (!engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isOpening && !engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isClosing)
-  {
-    engine.currentState = ENGINE_STATE_POWERED_FLIGHT;
-  }
-}
-
-void executePoweredFlight() {
-  tickThermistances();
-
-  engine.valves[ENGINE_IPA_VALVE_INDEX].setDutyCycle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], 72);
-  tickValves();
-
-  if (!engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isOpening && !engine.valves[ENGINE_IPA_VALVE_INDEX].status.bits.isClosing)
-  {
-    engine.currentState = ENGINE_STATE_IGNITION;
-  }
-}
-
-void executeUnpoweredFlight() {
-  tickThermistances();
-}
-
-void executeAbort() {
-  tickThermistances();
 }
