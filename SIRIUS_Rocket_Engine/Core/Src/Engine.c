@@ -2,6 +2,8 @@
 
 static volatile Engine engine;
 
+uint32_t previous;
+
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
 static void executeArmed(uint32_t timestamp_ms);
@@ -13,7 +15,8 @@ static void executeAbort(uint32_t timestamp_ms);
 static void initPWMs();
 static void initADC();
 static void initGPIOs();
-static void initUARTs();
+static void initUART();
+static void initUSB();
 
 static void initValves();
 static void initTemperatureSensors();
@@ -21,7 +24,7 @@ static void initTemperatureSensors();
 static void tickValves(uint32_t timestamp_ms);
 static void tickTemperatureSensors();
 
-void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temperatureSensors) {
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve* valves, TemperatureSensor* temperatureSensors) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
@@ -29,6 +32,9 @@ void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temper
 
   engine.pwms   = pwms;
   engine.adc    = adc;
+  engine.gpios  = gpios;
+  engine.uart   = uart;
+  engine.usb    = usb;
 
   engine.valves = valves;
   engine.temperatureSensors = temperatureSensors;
@@ -38,6 +44,9 @@ void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temper
 
   initADC();
   initPWMs();
+  initGPIOs();
+  initUART();
+  initUSB();
 }
 
 void Engine_tick(uint32_t timestamp_ms) {
@@ -85,6 +94,13 @@ void executeInit(uint32_t timestamp_ms) {
 }
 
 void executeIdle(uint32_t timestamp_ms) {
+  uint8_t data[] = "Hello USB";
+
+  if (HAL_GetTick() - previous >= 100) {
+    previous = HAL_GetTick();
+    //CDC_Transmit_FS(data, sizeof(data) - 1);
+    engine.usb->transmit(engine.usb, data, sizeof(data) - 1);
+  }
   // Wait for arming command, collect data
 }
 
@@ -124,7 +140,7 @@ void initADC() {
     engine.adc->errorStatus.bits.nullFunctionPointer = 1;
   }
   else {
-    engine.adc->init((struct ADC12*)&engine.adc, ENGINE_ADC_CHANNEL_AMOUNT);
+    engine.adc->init((struct ADC12*)engine.adc, ENGINE_ADC_CHANNEL_AMOUNT);
   }
 
   for (uint8_t i = 0; i < ENGINE_ADC_CHANNEL_AMOUNT; i++) {
@@ -135,6 +151,35 @@ void initADC() {
 
     engine.adc->channels[i].init((struct ADC12Channel*)&engine.adc->channels[i]);
   }
+}
+
+void initGPIOs() {
+  for (uint8_t i = 0; i < ENGINE_GPIO_AMOUNT; i++) {
+    if (engine.gpios[i].init == FUNCTION_NULL_POINTER) {
+      engine.gpios[i].errorStatus.bits.nullFunctionPointer = 1;
+      continue;
+    }
+
+    engine.gpios[i].init((struct GPIO*)&engine.gpios[i]);
+  }
+}
+
+void initUART() {
+  if (engine.uart->init == FUNCTION_NULL_POINTER) {
+    engine.uart->errorStatus.bits.nullFunctionPointer = 1;
+    return;
+  }
+
+  engine.uart->init(engine.uart);
+}
+
+void initUSB() {
+  if (engine.usb->init == FUNCTION_NULL_POINTER) {
+    engine.usb->errorStatus.bits.nullFunctionPointer = 1;
+    return;
+  }
+
+  engine.usb->init(engine.usb);
 }
 
 void initValves() {
@@ -172,7 +217,7 @@ void initTemperatureSensors() {
 
 void tickValves(uint32_t timestamp_ms) {
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
-    engine.valves[i].tick((struct Valve*)&engine.valves[i], timestamp_ms);
+    //engine.valves[i].tick((struct Valve*)&engine.valves[i], timestamp_ms);
   }
 }
 

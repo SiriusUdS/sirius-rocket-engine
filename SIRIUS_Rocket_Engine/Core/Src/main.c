@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "usb_device.h"
+#include "usbd_cdc_if.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -52,7 +53,8 @@ UART_HandleTypeDef huart1;
 GPIO gpios[ENGINE_GPIO_AMOUNT]        = {0};
 ADC12 adc                             = {0};
 PWM pwms[ENGINE_PWM_AMOUNT]           = {0};
-UART uarts[ENGINE_UART_AMOUNT]        = {0};
+UART uart                             = {0};
+volatile USB usb                      = {0}; 
 
 Valve valves[ENGINE_VALVE_AMOUNT]                                = {0};
 PressureSensor pressureSensors[ENGINE_PRESSURE_SENSOR_AMOUNT]    = {0};
@@ -73,6 +75,7 @@ static void setupGPIOs();
 static void setupPWMs();
 static void setupADC();
 static void setupUART();
+static void setupUSB();
 
 static void setupValves();
 static void setupIgniter();
@@ -127,6 +130,7 @@ int main(void)
   setupPWMs();
   setupGPIOs();
   setupUART();
+  setupUSB();
 
   // Setup Sensors/Devices
   setupValves();
@@ -134,11 +138,12 @@ int main(void)
   setupPressureSensors();
   setupTemperatureSensors();
 
-  Engine_init(pwms, &adc, valves, temperatureSensors);
+  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint32_t previous = 0;
   while (1)
   {
     Engine_tick(HAL_GetTick());
@@ -544,6 +549,9 @@ void setupADC() {
 
   adc.channels[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX].errorStatus.bits.notInitialized = 1;
   adc.channels[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX].init = (ADC12Channel_init)ADC12ChannelHAL_init;
+  adc.channels[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX].rank = 1;
+  adc.channels[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX].sampleTime_adcClockCyles = ADC_SAMPLETIME_28CYCLES;
+  adc.channels[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX].channelNumber = 0;
 
   adc.channels[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_ADC_CHANNEL_INDEX].errorStatus.bits.notInitialized = 1;
   adc.channels[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_ADC_CHANNEL_INDEX].init = (ADC12Channel_init)ADC12ChannelHAL_init;
@@ -637,9 +645,16 @@ void setupADC() {
 }
 
 void setupUART() {
-  uarts[ENGINE_TELECOMMUNICATION_UART_INDEX].errorStatus.bits.notInitialized = 1;
-  uarts[ENGINE_TELECOMMUNICATION_UART_INDEX].init = (UART_init)UARTHAL_init;
-  uarts[ENGINE_TELECOMMUNICATION_UART_INDEX].externalHandle = &huart1;
+  uart.errorStatus.bits.notInitialized = 1;
+  uart.init = (UART_init)UARTHAL_init;
+  uart.externalHandle = &huart1;
+}
+
+void setupUSB() {
+  usb.errorStatus.bits.notInitialized = 1;
+  usb.init = (USB_init)USBHAL_init;
+
+  usbCdc = &usb;
 }
 
 void setupValves() {

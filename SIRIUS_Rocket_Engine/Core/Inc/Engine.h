@@ -12,6 +12,7 @@
 #include "../sirius-embedded-common/Inc/LowLevelDriver/PWM/PWMHAL.h"
 #include "../sirius-embedded-common/Inc/LowLevelDriver/ADC/ADC12HAL.h"
 #include "../sirius-embedded-common/Inc/LowLevelDriver/UART/UARTHAL.h"
+#include "../sirius-embedded-common/Inc/LowLevelDriver/USB/USBHAL.h"
 
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineStatus.h"
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineErrorStatus.h"
@@ -29,7 +30,10 @@ typedef struct {
   EngineState       currentState;
 
   ADC12*            adc;
-  PWM  *            pwms;
+  PWM*              pwms;
+  GPIO*             gpios;
+  UART*             uart;
+  USB*              usb;
 
   Valve*             valves;
   TemperatureSensor* temperatureSensors;
@@ -37,7 +41,7 @@ typedef struct {
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, ADC12* adc, Valve* valves, TemperatureSensor* temperatureSensors);
+extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve* valves, TemperatureSensor* temperatureSensors);
 
 extern void Engine_tick(uint32_t timestamp_ms);
 

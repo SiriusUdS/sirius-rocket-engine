@@ -41,6 +41,8 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/UART/UARTHAL.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/PWM/PWM.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/PWM/PWMHAL.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/USB/USB.c
+    ../../Core/sirius-embedded-common/Src/LowLevelDriver/USB/USBHAL.c
     ../../Core/Src/Engine.c
     ../../Core/Src/main.c
     ../../USB_DEVICE/App/usb_device.c
