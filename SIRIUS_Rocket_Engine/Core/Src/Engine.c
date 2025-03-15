@@ -6,7 +6,7 @@ uint32_t previous;
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
-static void executeArmed(uint32_t timestamp_ms);
+static void executeArming(uint32_t timestamp_ms);
 static void executeIgnition(uint32_t timestamp_ms);
 static void executePoweredFlight(uint32_t timestamp_ms);
 static void executeUnpoweredFlight(uint32_t timestamp_ms);
@@ -64,8 +64,8 @@ void Engine_execute(uint32_t timestamp_ms) {
     case ENGINE_STATE_IDLE:
       executeIdle(timestamp_ms);
       break;
-    case ENGINE_STATE_ARMED:
-      executeArmed(timestamp_ms);
+    case ENGINE_STATE_ARMING:
+      executeArming(timestamp_ms);
       break;
     case ENGINE_STATE_IGNITION:
       executeIgnition(timestamp_ms);
@@ -101,10 +101,15 @@ void executeIdle(uint32_t timestamp_ms) {
     //CDC_Transmit_FS(data, sizeof(data) - 1);
     engine.usb->transmit(engine.usb, data, sizeof(data) - 1);
   }
+
+  if (engine.usb->status.bits.rxDataReady == 1) {
+    uint8_t* test = engine.usb->rxBuffer;
+    engine.usb->status.bits.rxDataReady = 0;
+  }
   // Wait for arming command, collect data
 }
 
-void executeArmed(uint32_t timestamp_ms) {
+void executeArming(uint32_t timestamp_ms) {
   // Wait for ignition command, completely armed
 }
 
