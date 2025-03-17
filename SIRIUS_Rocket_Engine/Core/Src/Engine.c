@@ -99,7 +99,7 @@ void executeIdle(uint32_t timestamp_ms) {
   if (HAL_GetTick() - previous >= 100) {
     previous = HAL_GetTick();
     //CDC_Transmit_FS(data, sizeof(data) - 1);
-    engine.usb->transmit(engine.usb, data, sizeof(data) - 1);
+    engine.usb->transmit((struct USB*)engine.usb, data, sizeof(data) - 1);
   }
 
   if (engine.usb->status.bits.rxDataReady == 1) {
