@@ -31,8 +31,9 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "../sirius-embedded-common/Inc/Devices/Valve/Valve.h"
-#include "../sirius-embedded-common/Inc/Devices/Valve/SG90.h"
+//#include "../sirius-embedded-common/Inc/Devices/Valve/Valve.h"
+//#include "../sirius-embedded-common/Inc/Devices/Valve/SG90.h"
+#include "../sirius-embedded-common/Inc/Devices/Storage/ExternalFlash/ExternalFlash.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -80,8 +81,6 @@ void Error_Handler(void);
 #define OTG_FS_PowerSwitchOn_GPIO_Port GPIOC
 #define PDM_OUT_Pin GPIO_PIN_3
 #define PDM_OUT_GPIO_Port GPIOC
-#define I2S3_WS_Pin GPIO_PIN_4
-#define I2S3_WS_GPIO_Port GPIOA
 #define SPI1_SCK_Pin GPIO_PIN_5
 #define SPI1_SCK_GPIO_Port GPIOA
 #define SPI1_MISO_Pin GPIO_PIN_6

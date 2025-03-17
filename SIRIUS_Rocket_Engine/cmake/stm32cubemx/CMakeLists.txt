@@ -26,7 +26,7 @@ target_include_directories(stm32cubemx INTERFACE
 
 target_sources(stm32cubemx INTERFACE
     ../../Core/Src/main.c
-    ../../Core/sirius-embedded-common/Src/Valve/Valve.c
+    ../../Core/sirius-embedded-common/Src/ExternalFlash/ExternalFlash.c
     ../../Core/Src/stm32f4xx_it.c
     ../../Core/Src/stm32f4xx_hal_msp.c
     ../../USB_HOST/App/usb_host.c

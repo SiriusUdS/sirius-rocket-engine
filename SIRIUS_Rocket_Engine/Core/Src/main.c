@@ -78,7 +78,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-  
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -87,7 +86,6 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -105,19 +103,19 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+  FLASH_init(&hspi1, 1);
   //Engine_init();
   
-  VALVE_init(htim1, SG90_PSC);
+  //VALVE_init(htim1, SG90_PSC);
   /*while(VALVE_GetState() != VALVE_OPENED){
     VALVE_SetState(VALVE_OPENED);
   }*/
-  ValveState last = VALVE_GetState();
-  if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
+  /*ValveState last = VALVE_GetState();*/
+  /*if (HAL_TIM_Base_Start_IT(&htim3) != HAL_OK)
   {
     /* Starting Error */
-    Error_Handler();
-  }
+    //Error_Handler();
+  //}
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,16 +127,28 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     //VALVE_SetState(VALVE_CLOSED);
-    if(last == VALVE_CLOSED){
+    /*if(last == VALVE_CLOSED){
       VALVE_SetState(VALVE_OPENED);
     }else{
       VALVE_SetState(VALVE_CLOSED);
-    }
+    }*/
     //VALVE_SetState(VALVE_OPENED);
 
-    if(VALVE_GetState() != VALVE_PENDING){
+    /*if(VALVE_GetState() != VALVE_PENDING){
         last = VALVE_GetState();
-    }
+    }*/
+    StatusRegister reg;
+    FLASH_readStatusRegister(&reg);
+    uint8_t addr[] = {0x00, 0x00, 0x01};
+    int resultErease = FLASH_ERASE(addr);
+    uint8_t dat[] = {0x00, 0x80, 0xF1, 0xF2};
+    int resultWrite = FLASH_write(addr, dat, 4);
+    uint8_t readDat[4];
+    int resultRead = FLASH_read(addr, readDat, 4);
+
+    while(1){}
+
+
 
   }
   /* USER CODE END 3 */
@@ -165,7 +175,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLM = 8;
   RCC_OscInitStruct.PLL.PLLN = 192;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
   RCC_OscInitStruct.PLL.PLLQ = 8;
@@ -245,7 +255,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
@@ -419,8 +429,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_15, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
                           |Audio_RST_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_0, GPIO_PIN_SET);
 
   /*Configure GPIO pin : DATA_Ready_Pin */
   GPIO_InitStruct.Pin = DATA_Ready_Pin;
@@ -462,13 +478,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : I2S3_WS_Pin */
-  GPIO_InitStruct.Pin = I2S3_WS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  /*Configure GPIO pin : PE15 */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
-  HAL_GPIO_Init(I2S3_WS_GPIO_Port, &GPIO_InitStruct);
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : CLK_IN_Pin */
   GPIO_InitStruct.Pin = CLK_IN_Pin;
@@ -494,6 +509,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PD0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : OTG_FS_OverCurrent_Pin */
   GPIO_InitStruct.Pin = OTG_FS_OverCurrent_Pin;
