@@ -126,7 +126,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM4_Init();
   MX_USB_DEVICE_Init();
-  //MX_SDIO_SD_Init();
+  MX_SDIO_SD_Init();
   /* USER CODE BEGIN 2 */
 
   // Setup Peripherals
@@ -144,7 +144,7 @@ int main(void)
 
   Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors);
   /* USER CODE END 2 */
-
+  
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint32_t previous = 0;
