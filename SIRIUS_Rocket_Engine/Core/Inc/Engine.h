@@ -8,6 +8,8 @@
 
 #include "../sirius-embedded-common/Inc/Device/Valve/HBL388.h"
 
+#include "../sirius-embedded-common/Inc/Device/Storage/SDCard.h"
+
 #include "../sirius-embedded-common/Inc/LowLevelDriver/GPIO/GPIOHAL.h"
 #include "../sirius-embedded-common/Inc/LowLevelDriver/PWM/PWMHAL.h"
 #include "../sirius-embedded-common/Inc/LowLevelDriver/ADC/ADC12HAL.h"

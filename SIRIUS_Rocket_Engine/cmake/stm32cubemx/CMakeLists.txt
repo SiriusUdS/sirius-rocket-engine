@@ -18,6 +18,9 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
     ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Inc
+    ../../FATFS/App
+    ../../FATFS/Target
+    ../../Middlewares/Third_Party/FatFs/src
     ../../USB_DEVICE/App
     ../../USB_DEVICE/Target
     ../../Drivers/CMSIS/Device/ST/STM32F4xx/Include
@@ -31,6 +34,8 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/sirius-embedded-common/Src/Sensor/PressureSensor/ETM375.c
     ../../Core/sirius-embedded-common/Src/Device/Valve/Valve.c
     ../../Core/sirius-embedded-common/Src/Device/Valve/HBL388.c
+    ../../Core/sirius-embedded-common/Src/Device/Storage/Storage.c
+    ../../Core/sirius-embedded-common/Src/Device/Storage/SDCard.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12Channel.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12ChannelHAL.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12.c
@@ -45,14 +50,20 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/USB/USBHAL.c
     ../../Core/Src/Engine.c
     ../../Core/Src/main.c
+    ../../FATFS/App/fatfs.c
+    ../../FATFS/Target/sd_diskio.c
+    ../../FATFS/Target/bsp_driver_sd.c
     ../../USB_DEVICE/App/usb_device.c
     ../../USB_DEVICE/App/usbd_cdc_if.c
     ../../USB_DEVICE/App/usbd_desc.c
     ../../USB_DEVICE/Target/usbd_conf.c
+    ../../Middlewares/Third_Party/FatFs/src/ff.c
+    ../../Middlewares/Third_Party/FatFs/src/diskio.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
+    ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.c
     ../../Core/Src/stm32f4xx_it.c
     ../../Core/Src/stm32f4xx_hal_msp.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c

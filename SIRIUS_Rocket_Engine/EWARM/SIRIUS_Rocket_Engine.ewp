@@ -360,6 +360,9 @@
           <state>$PROJ_DIR$/../USB_DEVICE/Target</state>
           <state>$PROJ_DIR$/../Middlewares/ST/STM32_USB_Device_Library/Core/Inc</state>
           <state>$PROJ_DIR$/../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc</state>
+          <state>$PROJ_DIR$/../FATFS/Target</state>
+          <state>$PROJ_DIR$/../FATFS/App</state>
+          <state>$PROJ_DIR$/../Middlewares/Third_Party/FatFs/src</state>
         </option>
         <option>
           <name>CCStdIncCheck</name>
@@ -1114,6 +1117,24 @@
           </file>
         </group>
       </group>
+      <group>
+        <name>FATFS</name>
+        <group>
+          <name>Target</name>
+          <file>
+            <name>$PROJ_DIR$/../FATFS/Target/bsp_driver_sd.c</name>
+          </file>
+          <file>
+            <name>$PROJ_DIR$/../FATFS/Target/sd_diskio.c</name>
+          </file>
+        </group>
+        <group>
+          <name>App</name>
+          <file>
+            <name>$PROJ_DIR$/../FATFS/App/fatfs.c</name>
+          </file>
+        </group>
+      </group>
     </group>
   </group>
   <group>
@@ -1184,6 +1205,9 @@
         <name>$PROJ_DIR$/../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sd.c</name>
       </file>
       <file>
+        <name>$PROJ_DIR$/../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c</name>
+      </file>
+      <file>
         <name>$PROJ_DIR$/../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c</name>
       </file>
       <file>
@@ -1215,6 +1239,21 @@
       </file>
       <file>
         <name>$PROJ_DIR$/../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c</name>
+      </file>
+    </group>
+    <group>
+      <name>FatFs</name>
+      <file>
+        <name>$PROJ_DIR$/../Middlewares/Third_Party/FatFs/src/diskio.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$/../Middlewares/Third_Party/FatFs/src/ff.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$/../Middlewares/Third_Party/FatFs/src/ff_gen_drv.c</name>
+      </file>
+      <file>
+        <name>$PROJ_DIR$/../Middlewares/Third_Party/FatFs/src/option/syscall.c</name>
       </file>
     </group>
   </group>
