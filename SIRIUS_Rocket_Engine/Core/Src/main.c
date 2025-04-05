@@ -64,6 +64,7 @@ volatile USB usb                      = {0};
 Valve valves[ENGINE_VALVE_AMOUNT]                                = {0};
 PressureSensor pressureSensors[ENGINE_PRESSURE_SENSOR_AMOUNT]    = {0};
 TemperatureSensor temperatureSensors[ENGINE_THERMISTANCE_AMOUNT] = {0};
+Telecommunication telecom = {0};
 
 /* USER CODE END PV */
 
@@ -88,6 +89,7 @@ static void setupValves();
 static void setupIgniter();
 static void setupTemperatureSensors();
 static void setupPressureSensors();
+static void setupTelecommunication();
 
 /* USER CODE END PFP */
 
@@ -147,8 +149,9 @@ int main(void)
   setupIgniter();
   setupPressureSensors();
   setupTemperatureSensors();
-
-  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors);
+  setupTelecommunication();
+  
+  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors, &telecom);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -181,7 +184,17 @@ int main(void)
     data[3] = 0;
 
     storage.fetchData(&storage, data);*/
-    Engine_tick(HAL_GetTick());
+    //Engine_tick(HAL_GetTick());
+    uint8_t d = "+++";
+    HAL_UART_Transmit(&huart1, d, sizeof(d), HAL_MAX_DELAY);
+    uint8_t din[10];
+    while(1){
+      HAL_UART_Receive(&huart1, din, 10, HAL_MAX_DELAY);
+      if(din[0] == 'O'){
+        break;
+      }
+    }
+    HAL_Delay(400);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -841,6 +854,11 @@ void setupTemperatureSensors() {
     temperatureSensors[i].errorStatus.bits.notInitialized = 1;
     temperatureSensors[i].init = (TemperatureSensor_init)NTC3950_init;
   }
+}
+
+void setupTelecommunication(){
+  telecom.errorStatus.bits.notInitialized = 1;
+  telecom.init = (Telecommunication_init)TELECOM_init;
 }
 
 void setupPressureSensors() {

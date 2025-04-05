@@ -3,6 +3,7 @@
 static volatile Engine engine;
 
 uint32_t previous;
+uint32_t previous2;
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
@@ -20,11 +21,12 @@ static void initUSB();
 
 static void initValves();
 static void initTemperatureSensors();
+static void initTelecom();
 
 static void tickValves(uint32_t timestamp_ms);
 static void tickTemperatureSensors();
 
-void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve* valves, TemperatureSensor* temperatureSensors) {
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
@@ -38,15 +40,18 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve
 
   engine.valves = valves;
   engine.temperatureSensors = temperatureSensors;
+  engine.telecom = telecom;
 
   initValves();
   initTemperatureSensors();
+  initTelecom();
 
   initADC();
   initPWMs();
   initGPIOs();
   initUART();
   initUSB();
+
 }
 
 void Engine_tick(uint32_t timestamp_ms) {
@@ -91,6 +96,8 @@ void executeInit(uint32_t timestamp_ms) {
     engine.valves[i].close((struct Valve*)&engine.valves[i], timestamp_ms);
   }
   engine.currentState = ENGINE_STATE_IDLE;
+
+  engine.telecom->setupTelecom((struct Telecommunication*) engine.telecom);
 }
 
 void executeIdle(uint32_t timestamp_ms) {
@@ -110,6 +117,7 @@ void executeIdle(uint32_t timestamp_ms) {
       }
     }
   };
+  uint8_t data[] = "FUCK TRUMP!";
 
   if (HAL_GetTick() - previous >= 100) {
     previous = HAL_GetTick();
@@ -122,6 +130,12 @@ void executeIdle(uint32_t timestamp_ms) {
     engine.usb->status.bits.rxDataReady = 0;
   }
   // Wait for arming command, collect data
+  if(HAL_GetTick() - previous2 >= 500){
+    previous2 = HAL_GetTick();
+
+    engine.telecom->sendData((struct Telecommunication*)engine.telecom, data, sizeof(data)-1);
+  }
+  
 }
 
 void executeArming(uint32_t timestamp_ms) {
@@ -239,6 +253,16 @@ void initTemperatureSensors() {
 
     engine.temperatureSensors[i].init((struct TemperatureSensor*)&engine.temperatureSensors[i]);
   }
+}
+
+void initTelecom(){
+  if(engine.telecom->init == FUNCTION_NULL_POINTER){
+    engine.telecom->errorStatus.bits.nullFunctionPointer = 1;
+    return;
+  }
+
+  engine.telecom->init((struct Telecommunication*)engine.telecom);
+  engine.telecom->uart = engine.uart;
 }
 
 void tickValves(uint32_t timestamp_ms) {
