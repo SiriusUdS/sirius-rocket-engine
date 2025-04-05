@@ -184,12 +184,18 @@ void initUSB() {
     return;
   }
 
-  engine.usb->init(engine.usb);
+  engine.usb->init((struct USB*)engine.usb);
 }
 
 void initValves() {
   engine.valves[ENGINE_IPA_VALVE_INDEX].pwm = &engine.pwms[ENGINE_IPA_VALVE_PWM_INDEX];
+  engine.valves[ENGINE_IPA_VALVE_INDEX].gpio[VALVE_GPIO_OPENED_INDEX] = &engine.gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX];
+  engine.valves[ENGINE_IPA_VALVE_INDEX].gpio[VALVE_GPIO_CLOSED_INDEX] = &engine.gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX];
+
   engine.valves[ENGINE_NOS_VALVE_INDEX].pwm = &engine.pwms[ENGINE_NOS_VALVE_PWM_INDEX];
+  engine.valves[ENGINE_NOS_VALVE_INDEX].gpio[VALVE_GPIO_OPENED_INDEX] = &engine.gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX];
+  engine.valves[ENGINE_NOS_VALVE_INDEX].gpio[VALVE_GPIO_CLOSED_INDEX] = &engine.gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX];
+
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
     if (engine.valves[i].init == FUNCTION_NULL_POINTER) {
       engine.valves[i].errorStatus.bits.nullFunctionPointer = 1;
@@ -222,7 +228,7 @@ void initTemperatureSensors() {
 
 void tickValves(uint32_t timestamp_ms) {
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
-    //engine.valves[i].tick((struct Valve*)&engine.valves[i], timestamp_ms);
+    engine.valves[i].tick((struct Valve*)&engine.valves[i], timestamp_ms);
   }
 }
 

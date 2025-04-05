@@ -29,13 +29,13 @@ typedef struct {
   EngineErrorStatus errorStatus;
   EngineStatus      status;
 
-  EngineState       currentState;
+  uint8_t currentState;
 
-  ADC12*            adc;
-  PWM*              pwms;
-  GPIO*             gpios;
-  UART*             uart;
-  USB*              usb;
+  ADC12* adc;
+  PWM*   pwms;
+  GPIO*  gpios;
+  UART*  uart;
+  USB*   usb;
 
   Valve*             valves;
   TemperatureSensor* temperatureSensors;
