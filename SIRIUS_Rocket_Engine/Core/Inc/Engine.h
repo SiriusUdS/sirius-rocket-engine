@@ -21,6 +21,8 @@
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineSensors.h"
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineState.h"
 
+#include "../sirius-embedded-common/Inc/Device/Telecommunication/Telecommunication.h"
+
 #include "stm32f4xx_hal.h"
 
 #define FUNCTION_NULL_POINTER 0
@@ -40,10 +42,11 @@ typedef struct {
   Valve*             valves;
   TemperatureSensor* temperatureSensors;
   PressureSensor*    pressureSensors;
+  Telecommunication* telecom;
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve* valves, TemperatureSensor* temperatureSensors);
+extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom);
 
 extern void Engine_tick(uint32_t timestamp_ms);
 
