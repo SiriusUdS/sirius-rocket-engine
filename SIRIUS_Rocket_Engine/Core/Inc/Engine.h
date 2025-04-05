@@ -4,7 +4,7 @@
 #include "../sirius-embedded-common/sirius-headers-common/PressureSensor/PressureSensorData.h"
 
 #include "../sirius-embedded-common/Inc/Sensor/TemperatureSensor/NTC3950.h"
-#include "../sirius-embedded-common/sirius-headers-common/TemperatureSensor/TemperatureSensorData.h"
+#include "../sirius-embedded-common/sirius-headers-common/TemperatureSensor/TemperatureSensorPacket.h"
 
 #include "../sirius-embedded-common/Inc/Device/Valve/HBL388.h"
 

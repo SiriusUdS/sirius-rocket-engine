@@ -130,9 +130,9 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM4_Init();
   MX_USB_DEVICE_Init();
-  MX_SDIO_SD_Init();
+  //MX_SDIO_SD_Init();
   MX_SPI2_Init();
-  MX_FATFS_Init();
+  //MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
   // Setup Peripherals

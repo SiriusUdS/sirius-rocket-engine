@@ -94,12 +94,27 @@ void executeInit(uint32_t timestamp_ms) {
 }
 
 void executeIdle(uint32_t timestamp_ms) {
-  uint8_t data[] = "Hello USB";
+  TemperatureSensorPacket testPacket = {
+    .fields = {
+      .header = {
+        .values[0] = TEMPERATURE_SENSOR_DATA_HEADER_CODE & 0xFFFFFF00
+      },
+      .rawData = {
+        .members = {
+          .data = {
+            .rawTemperature = *engine.adc->channels[0].currentValue
+          },
+          .status = engine.temperatureSensors[0].status,
+          .errorStatus = engine.temperatureSensors[0].errorStatus
+        }
+      }
+    }
+  };
 
   if (HAL_GetTick() - previous >= 100) {
     previous = HAL_GetTick();
     //CDC_Transmit_FS(data, sizeof(data) - 1);
-    engine.usb->transmit((struct USB*)engine.usb, data, sizeof(data) - 1);
+    engine.usb->transmit((struct USB*)engine.usb, testPacket.data, sizeof(TemperatureSensorPacket) - 1);
   }
 
   if (engine.usb->status.bits.rxDataReady == 1) {
