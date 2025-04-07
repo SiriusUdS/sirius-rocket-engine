@@ -185,16 +185,20 @@ int main(void)
 
     storage.fetchData(&storage, data);*/
     //Engine_tick(HAL_GetTick());
-    uint8_t d = "+++";
-    HAL_UART_Transmit(&huart1, d, sizeof(d), HAL_MAX_DELAY);
+    uint8_t d[] = "+++";
+    HAL_UART_Transmit(&huart1, d, sizeof(d)-1, HAL_MAX_DELAY);
     uint8_t din[10];
-    while(1){
+    uint32_t in = 0;
+    /*while(1){
       HAL_UART_Receive(&huart1, din, 10, HAL_MAX_DELAY);
       if(din[0] == 'O'){
         break;
       }
-    }
-    HAL_Delay(400);
+
+      in++;
+
+    }*/
+    HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
