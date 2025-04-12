@@ -4,6 +4,7 @@ static volatile Engine engine;
 
 uint32_t previous;
 uint32_t previous2;
+uint16_t testValueThermistance = 0;
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
@@ -51,7 +52,6 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve
   initGPIOs();
   initUART();
   initUSB();
-
 }
 
 void Engine_tick(uint32_t timestamp_ms) {
@@ -109,10 +109,11 @@ void executeIdle(uint32_t timestamp_ms) {
       .rawData = {
         .members = {
           .data = {
-            .rawTemperature = *engine.adc->channels[0].currentValue
+            .rawTemperature = testValueThermistance
           },
           .status = engine.temperatureSensors[0].status,
-          .errorStatus = engine.temperatureSensors[0].errorStatus
+          .errorStatus = engine.temperatureSensors[0].errorStatus,
+          .timeStamp_ms = timestamp_ms
         }
       }
     }
@@ -122,7 +123,9 @@ void executeIdle(uint32_t timestamp_ms) {
   if (HAL_GetTick() - previous >= 100) {
     previous = HAL_GetTick();
     //CDC_Transmit_FS(data, sizeof(data) - 1);
-    engine.usb->transmit((struct USB*)engine.usb, testPacket.data, sizeof(TemperatureSensorPacket) - 1);
+    testValueThermistance++;
+    testPacket.fields.rawData.members.data.rawTemperature = testValueThermistance;
+    engine.usb->transmit((struct USB*)engine.usb, testPacket.data, sizeof(TemperatureSensorPacket));
   }
 
   if (engine.usb->status.bits.rxDataReady == 1) {
@@ -130,11 +133,17 @@ void executeIdle(uint32_t timestamp_ms) {
     engine.usb->status.bits.rxDataReady = 0;
   }
   // Wait for arming command, collect data
-  if(HAL_GetTick() - previous2 >= 500){
+  /*if(HAL_GetTick() - previous2 >= 500){
     previous2 = HAL_GetTick();
 
     engine.telecom->sendData((struct Telecommunication*)engine.telecom, data, sizeof(data)-1);
-  }
+  }*/
+  /*engine.valves[ENGINE_IPA_VALVE_INDEX].open((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
+  HAL_Delay(1000);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].setIdle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX]);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
+  HAL_Delay(1000);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].setIdle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX]);*/
   
 }
 
