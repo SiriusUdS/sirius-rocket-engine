@@ -4,14 +4,16 @@ static volatile Engine engine;
 
 uint32_t previous;
 uint32_t previous2;
+uint16_t testValueThermistance = 0;
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
+static void executeAbort(uint32_t timestamp_ms);
+static void executeTest(uint32_t timestamp_ms);
 static void executeArming(uint32_t timestamp_ms);
 static void executeIgnition(uint32_t timestamp_ms);
 static void executePoweredFlight(uint32_t timestamp_ms);
 static void executeUnpoweredFlight(uint32_t timestamp_ms);
-static void executeAbort(uint32_t timestamp_ms);
 
 static void initPWMs();
 static void initADC();
@@ -51,7 +53,6 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve
   initGPIOs();
   initUART();
   initUSB();
-
 }
 
 void Engine_tick(uint32_t timestamp_ms) {
@@ -59,6 +60,8 @@ void Engine_tick(uint32_t timestamp_ms) {
   tickValves(timestamp_ms);
 
   Engine_execute(timestamp_ms);
+  // TEST
+  //executeTest(timestamp_ms);
 }
 
 void Engine_execute(uint32_t timestamp_ms) {
@@ -101,7 +104,30 @@ void executeInit(uint32_t timestamp_ms) {
 }
 
 void executeIdle(uint32_t timestamp_ms) {
-  TemperatureSensorPacket testPacket = {
+  uint8_t data[] = "FUCK TRUMP!";
+
+  
+  // Wait for arming command, collect data
+  /*if(HAL_GetTick() - previous2 >= 500){
+    previous2 = HAL_GetTick();
+
+    engine.telecom->sendData((struct Telecommunication*)engine.telecom, data, sizeof(data)-1);
+  }*/
+  /*engine.valves[ENGINE_IPA_VALVE_INDEX].open((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
+  HAL_Delay(1000);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].setIdle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX]);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
+  HAL_Delay(1000);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].setIdle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX]);*/
+  
+}
+
+void executeAbort(uint32_t timestamp_ms) {
+  // Check flowcharts for wtf to do
+}
+
+void executeTest(uint32_t timestamp_ms) {
+  TemperatureSensorPacket temperatureSensorTestPacket = {
     .fields = {
       .header = {
         .values[0] = TEMPERATURE_SENSOR_DATA_HEADER_CODE & 0xFFFFFF00
@@ -109,33 +135,50 @@ void executeIdle(uint32_t timestamp_ms) {
       .rawData = {
         .members = {
           .data = {
-            .rawTemperature = *engine.adc->channels[0].currentValue
+            .rawTemperature = testValueThermistance
           },
           .status = engine.temperatureSensors[0].status,
-          .errorStatus = engine.temperatureSensors[0].errorStatus
+          .errorStatus = engine.temperatureSensors[0].errorStatus,
+          .timeStamp_ms = timestamp_ms
         }
       }
     }
   };
-  uint8_t data[] = "FUCK TRUMP!";
+
+  AccelerometerPacket accelerometerTestPacket = {
+    .fields = {
+      .header = {
+        .values[0] = ACCELEROMETER_DATA_HEADER_CODE & 0xFFFFFF00
+      },
+      .rawData = {
+        .members = {
+          .data = {
+            .rawX = 1,
+            .rawY = 2,
+            .rawZ = 5
+          },
+          .status = {0},
+          .errorStatus = {0},
+          .timeStamp_ms = timestamp_ms
+        }
+      }
+    }
+  };
 
   if (HAL_GetTick() - previous >= 100) {
     previous = HAL_GetTick();
     //CDC_Transmit_FS(data, sizeof(data) - 1);
-    engine.usb->transmit((struct USB*)engine.usb, testPacket.data, sizeof(TemperatureSensorPacket) - 1);
+    testValueThermistance++;
+    temperatureSensorTestPacket.fields.rawData.members.data.rawTemperature = testValueThermistance;
+    engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
+    engine.usb->transmit((struct USB*)engine.usb, accelerometerTestPacket.data, sizeof(AccelerometerPacket) - 4);
+    engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
   }
 
   if (engine.usb->status.bits.rxDataReady == 1) {
     uint8_t* test = engine.usb->rxBuffer;
     engine.usb->status.bits.rxDataReady = 0;
   }
-  // Wait for arming command, collect data
-  if(HAL_GetTick() - previous2 >= 500){
-    previous2 = HAL_GetTick();
-
-    engine.telecom->sendData((struct Telecommunication*)engine.telecom, data, sizeof(data)-1);
-  }
-  
 }
 
 void executeArming(uint32_t timestamp_ms) {
@@ -152,10 +195,6 @@ void executePoweredFlight(uint32_t timestamp_ms) {
 
 void executeUnpoweredFlight(uint32_t timestamp_ms) {
   // stay mostly idle
-}
-
-void executeAbort(uint32_t timestamp_ms) {
-  // Check flowcharts for wtf to do
 }
 
 void initPWMs() {
