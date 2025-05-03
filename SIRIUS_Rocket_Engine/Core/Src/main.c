@@ -184,11 +184,40 @@ int main(void)
     data[3] = 0;
 
     storage.fetchData(&storage, data);*/
-    Engine_tick(HAL_GetTick());
-    uint8_t d[] = "+++";
-    //HAL_UART_Transmit(&huart1, d, sizeof(d)-1, HAL_MAX_DELAY);
-    uint8_t din[10];
-    uint32_t in = 0;
+    //Engine_tick(HAL_GetTick());
+    /*HAL_Delay(5000);
+    uint8_t bit [] = "b";
+    HAL_UART_Transmit (&huart1,  bit, sizeof(bit), HAL_MAX_DELAY);
+    HAL_Delay(2500);
+    HAL_UART_Transmit (&huart1,  bit, sizeof(bit), HAL_MAX_DELAY);
+    HAL_Delay(2500);
+    HAL_UART_Transmit (&huart1,  bit, sizeof(bit), HAL_MAX_DELAY);
+    HAL_Delay(500);*/
+uint8_t enterCmdMode[] = "+++";  // Enter AT command mode
+uint8_t setBroadcast[] = "ATDL FFFF\r\n"; // Set broadcast address
+uint8_t setTransmitOpt[] = "ATTO 40\r\n"; // Set transmit option
+uint8_t writeNetwork[] = "ATWR\r\n"; // Save network settings
+uint8_t exitCmdMode[] = "ATCN\r\n"; // Exit AT command mode
+
+HAL_UART_Transmit(&huart1, enterCmdMode, sizeof(enterCmdMode)-1, HAL_MAX_DELAY);
+HAL_Delay(1000);  // Short delay for command mode entry
+uint8_t din1[10];
+HAL_UART_Receive(&huart1, din1, 10, 1000);
+
+HAL_UART_Transmit(&huart1, setBroadcast, sizeof(setBroadcast)-1, HAL_MAX_DELAY);
+HAL_UART_Transmit(&huart1, setTransmitOpt, sizeof(setTransmitOpt)-1, HAL_MAX_DELAY);
+HAL_UART_Transmit(&huart1, writeNetwork, sizeof(writeNetwork)-1, HAL_MAX_DELAY); // Save settings
+
+HAL_UART_Transmit(&huart1, exitCmdMode, sizeof(exitCmdMode)-1,  HAL_MAX_DELAY);
+
+while(1){
+  uint8_t d[] = "XBEE VA MOURIR";
+  HAL_UART_Transmit(&huart1, d, sizeof(d)-1, HAL_MAX_DELAY);
+  uint8_t din[10];
+  uint32_t in = 0;
+  HAL_Delay(500);
+}
+    
     /*while(1){
       HAL_UART_Receive(&huart1, din, 10, HAL_MAX_DELAY);
       if(din[0] == 'O'){
