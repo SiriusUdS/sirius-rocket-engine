@@ -2,6 +2,9 @@
 
 static volatile Engine engine;
 
+uint32_t lastTimestamp_ms;
+
+// Test variables, to be wiped out
 uint32_t previous;
 uint32_t previous2;
 uint16_t testValueThermistance = 0;
@@ -61,7 +64,7 @@ void Engine_tick(uint32_t timestamp_ms) {
 
   Engine_execute(timestamp_ms);
   // TEST
-  //executeTest(timestamp_ms);
+  executeTest(timestamp_ms);
 }
 
 void Engine_execute(uint32_t timestamp_ms) {
@@ -167,12 +170,11 @@ void executeTest(uint32_t timestamp_ms) {
 
   if (HAL_GetTick() - previous >= 100) {
     previous = HAL_GetTick();
-    //CDC_Transmit_FS(data, sizeof(data) - 1);
     testValueThermistance++;
     temperatureSensorTestPacket.fields.rawData.members.data.rawTemperature = testValueThermistance;
     engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
-    engine.usb->transmit((struct USB*)engine.usb, accelerometerTestPacket.data, sizeof(AccelerometerPacket) - 4);
-    engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
+    //engine.usb->transmit((struct USB*)engine.usb, accelerometerTestPacket.data, sizeof(AccelerometerPacket));
+    //engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
   }
 
   if (engine.usb->status.bits.rxDataReady == 1) {
