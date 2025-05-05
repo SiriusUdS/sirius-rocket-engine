@@ -70,7 +70,7 @@ void Engine_execute(uint32_t timestamp_ms) {
       executeInit(timestamp_ms);
       break;
     case ENGINE_STATE_IDLE:
-      executeIdle(timestamp_ms);
+      //executeIdle(timestamp_ms);
       break;
     case ENGINE_STATE_ARMING:
       executeArming(timestamp_ms);
@@ -170,9 +170,9 @@ void executeTest(uint32_t timestamp_ms) {
     //CDC_Transmit_FS(data, sizeof(data) - 1);
     testValueThermistance++;
     temperatureSensorTestPacket.fields.rawData.members.data.rawTemperature = testValueThermistance;
-    engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
-    engine.usb->transmit((struct USB*)engine.usb, accelerometerTestPacket.data, sizeof(AccelerometerPacket) - 4);
-    engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
+    //engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
+    //engine.usb->transmit((struct USB*)engine.usb, accelerometerTestPacket.data, sizeof(AccelerometerPacket) - 4);
+    //engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
   }
 
   if (engine.usb->status.bits.rxDataReady == 1) {
