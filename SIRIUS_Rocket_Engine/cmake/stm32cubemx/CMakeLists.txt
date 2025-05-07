@@ -60,7 +60,7 @@ target_sources(stm32cubemx INTERFACE
     ../../USB_DEVICE/Target/usbd_conf.c
     ../../Middlewares/Third_Party/FatFs/src/ff.c
     ../../Middlewares/Third_Party/FatFs/src/diskio.c
-    ../../Middlewares/Third_Party/FatFs/src/option/ccsbcs.c
+    ../../FATFS/Target/fatfs_platform.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c

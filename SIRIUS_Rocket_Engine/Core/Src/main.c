@@ -132,9 +132,9 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM4_Init();
   MX_USB_DEVICE_Init();
-  //MX_SDIO_SD_Init();
+  MX_SDIO_SD_Init();
   MX_SPI2_Init();
-  //MX_FATFS_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
   // Setup Peripherals
@@ -169,10 +169,43 @@ int main(void)
   data[2] = 3;
   data[3] = 4;*/
 
+  FATFS fs;
+  FIL fil;
+  FRESULT res;
+  UINT br, bw;
+  char buffer[100];
+
+  HAL_Delay(1000);
+  
   while (1)
   { 
+    res = f_mount(&SDFatFS, (TCHAR const*) SDPath, 0);
+    if (res != FR_OK) {
+        Error_Handler(); // or handle error
+    }
+    
+    DIR dir;
+    char* path = "";
 
-    Engine_tick(HAL_GetTick());
+    // Write
+    res = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);
+    if (res == FR_OK) {
+        const char *text = "Hello from STM32 using SDIO and FAT32!";
+        f_write(&SDFile, text, strlen(text), &bw);
+        f_close(&SDFile);
+    }
+
+    // Read
+    HAL_Delay(1000);
+    res = f_open(&SDFile, "test.txt", FA_READ);
+    if (res == FR_OK) {
+        f_read(&SDFile, buffer, sizeof(buffer)-1, &br);
+        buffer[br] = 0; // Null-terminate
+        f_close(&SDFile);
+        uint8_t test = 0;
+        // You can now print buffer to UART or debug
+    }
+    //Engine_tick(HAL_GetTick());
 
     
     /*while(1){
@@ -229,9 +262,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 144;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-  RCC_OscInitStruct.PLL.PLLQ = 6;
+  RCC_OscInitStruct.PLL.PLLN = 96;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -246,7 +279,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
     Error_Handler();
   }
@@ -273,7 +306,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
@@ -458,11 +491,19 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.ClockEdge = SDIO_CLOCK_EDGE_RISING;
   hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_DISABLE;
   hsd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_DISABLE;
-  hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
+  hsd.Init.BusWide = SDIO_BUS_WIDE_4B;
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd.Init.ClockDiv = 0;
+  hsd.Init.ClockDiv = 18;
   /* USER CODE BEGIN SDIO_Init 2 */
 
+  hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
+  if (HAL_SD_Init(&hsd) != HAL_OK) {
+    Error_Handler();
+  }
+
+  if (HAL_SD_ConfigWideBusOperation(&hsd, SDIO_BUS_WIDE_4B) != HAL_OK) {
+    Error_Handler();
+  }
   /* USER CODE END SDIO_Init 2 */
 
 }
@@ -664,6 +705,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : SD_CARD_DETECT_PD_Pin */
+  GPIO_InitStruct.Pin = SD_CARD_DETECT_PD_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(SD_CARD_DETECT_PD_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : GPIO_OUTPUT_HEATPAD_1_Pin GPIO_OUTPUT_HEATPAD_2_Pin */
   GPIO_InitStruct.Pin = GPIO_OUTPUT_HEATPAD_1_Pin|GPIO_OUTPUT_HEATPAD_2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -683,6 +730,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+uint8_t BSP_SD_IsDetected(void) {
+  __IO uint8_t status = SD_PRESENT;
+
+  return status;
+}
 
 // These should only link HAL to instance and set base function pointers
 

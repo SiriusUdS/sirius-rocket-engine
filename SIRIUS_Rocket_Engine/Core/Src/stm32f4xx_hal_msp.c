@@ -232,20 +232,30 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     __HAL_RCC_SDIO_CLK_ENABLE();
 
     __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     /**SDIO GPIO Configuration
-    PC8     ------> SDIO_D0
+    PC9     ------> SDIO_D1
+    PA9     ------> SDIO_D2
     PC12     ------> SDIO_CK
     PD2     ------> SDIO_CMD
+    PB4     ------> SDIO_D0
     PB5     ------> SDIO_D3
     */
-    GPIO_InitStruct.Pin = SDIO_D0_UNUSED_Pin|GPIO_PIN_12;
+    GPIO_InitStruct.Pin = GPIO_PIN_9|GPIO_PIN_12;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF12_SDIO;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_9;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF12_SDIO;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     GPIO_InitStruct.Pin = GPIO_PIN_2;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -254,7 +264,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* hsd)
     GPIO_InitStruct.Alternate = GPIO_AF12_SDIO;
     HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = GPIO_PIN_5;
+    GPIO_InitStruct.Pin = SDIO_D0_SWAPPED_Pin|GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -295,16 +305,20 @@ void HAL_SD_MspDeInit(SD_HandleTypeDef* hsd)
     __HAL_RCC_SDIO_CLK_DISABLE();
 
     /**SDIO GPIO Configuration
-    PC8     ------> SDIO_D0
+    PC9     ------> SDIO_D1
+    PA9     ------> SDIO_D2
     PC12     ------> SDIO_CK
     PD2     ------> SDIO_CMD
+    PB4     ------> SDIO_D0
     PB5     ------> SDIO_D3
     */
-    HAL_GPIO_DeInit(GPIOC, SDIO_D0_UNUSED_Pin|GPIO_PIN_12);
+    HAL_GPIO_DeInit(GPIOC, GPIO_PIN_9|GPIO_PIN_12);
+
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_9);
 
     HAL_GPIO_DeInit(GPIOD, GPIO_PIN_2);
 
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_5);
+    HAL_GPIO_DeInit(GPIOB, SDIO_D0_SWAPPED_Pin|GPIO_PIN_5);
 
   /* USER CODE BEGIN SDIO_MspDeInit 1 */
 

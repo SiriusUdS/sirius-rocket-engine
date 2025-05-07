@@ -1127,6 +1127,9 @@
           <file>
             <name>$PROJ_DIR$/../FATFS/Target/sd_diskio.c</name>
           </file>
+          <file>
+            <name>$PROJ_DIR$/../FATFS/Target/fatfs_platform.c</name>
+          </file>
         </group>
         <group>
           <name>App</name>
@@ -1254,9 +1257,6 @@
       </file>
       <file>
         <name>$PROJ_DIR$/../Middlewares/Third_Party/FatFs/src/option/syscall.c</name>
-      </file>
-      <file>
-        <name>$PROJ_DIR$/../Middlewares/Third_Party/FatFs/src/option/ccsbcs.c</name>
       </file>
     </group>
   </group>
