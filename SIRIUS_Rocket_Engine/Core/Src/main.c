@@ -165,11 +165,11 @@ int main(void)
     .externalInstance = (void*)&SDFatFS,
   };*/
 
-  /*uint8_t data[4096/8] = {0};
+  uint8_t data[4096/8] = {0};
   data[0] = 1;
   data[1] = 2;
   data[2] = 3;
-  data[3] = 4;*/
+  data[3] = 4;
 
   FRESULT mountRes = FR_OK;
   FRESULT openRes = FR_OK;
@@ -177,33 +177,31 @@ int main(void)
   UINT br, bw;
   char buffer[100];
 
+  // necesarry because cpu init too fast for card
   HAL_Delay(1000);
   
   mountRes = f_mount(&SDFatFS, (TCHAR const*) SDPath, 1);
   if (mountRes != FR_OK) {
     Error_Handler(); // or handle error
   }
-
+  openRes = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);
   while (1)
   { 
     // Write
-    openRes = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);
     if (openRes == FR_OK) {
-        const char *text = "Poopies factory";
-        f_write(&SDFile, text, strlen(text), &bw);
-        //f_sync(&SDFile);
-        closeRes =  f_close(&SDFile);
+        f_write(&SDFile, data, sizeof(data), &bw);
+        closeRes =  f_sync(&SDFile);
     }
 
     // Read
     //HAL_Delay(1000);
-    openRes = f_open(&SDFile, "test.txt", FA_READ);
+    /*openRes = f_open(&SDFile, "test.txt", FA_READ);
     if (openRes == FR_OK) {
         f_read(&SDFile, buffer, sizeof(buffer)-1, &br);
         buffer[br] = 0; // \0
         //f_sync(&SDFile);
         closeRes = f_close(&SDFile);
-    }
+    }*/
     //Engine_tick(HAL_GetTick());
 
     
