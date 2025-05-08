@@ -47,6 +47,8 @@ ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
 SD_HandleTypeDef hsd;
+DMA_HandleTypeDef hdma_sdio_rx;
+DMA_HandleTypeDef hdma_sdio_tx;
 
 SPI_HandleTypeDef hspi2;
 
@@ -169,41 +171,38 @@ int main(void)
   data[2] = 3;
   data[3] = 4;*/
 
-  FATFS fs;
-  FIL fil;
-  FRESULT res;
+  FRESULT mountRes = FR_OK;
+  FRESULT openRes = FR_OK;
+  FRESULT closeRes = FR_OK;
   UINT br, bw;
   char buffer[100];
 
   HAL_Delay(1000);
   
+  mountRes = f_mount(&SDFatFS, (TCHAR const*) SDPath, 1);
+  if (mountRes != FR_OK) {
+    Error_Handler(); // or handle error
+  }
+
   while (1)
   { 
-    res = f_mount(&SDFatFS, (TCHAR const*) SDPath, 0);
-    if (res != FR_OK) {
-        Error_Handler(); // or handle error
-    }
-    
-    DIR dir;
-    char* path = "";
-
     // Write
-    res = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);
-    if (res == FR_OK) {
-        const char *text = "Hello from STM32 using SDIO and FAT32!";
+    openRes = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);
+    if (openRes == FR_OK) {
+        const char *text = "Poopies factory";
         f_write(&SDFile, text, strlen(text), &bw);
-        f_close(&SDFile);
+        //f_sync(&SDFile);
+        closeRes =  f_close(&SDFile);
     }
 
     // Read
-    HAL_Delay(1000);
-    res = f_open(&SDFile, "test.txt", FA_READ);
-    if (res == FR_OK) {
+    //HAL_Delay(1000);
+    openRes = f_open(&SDFile, "test.txt", FA_READ);
+    if (openRes == FR_OK) {
         f_read(&SDFile, buffer, sizeof(buffer)-1, &br);
-        buffer[br] = 0; // Null-terminate
-        f_close(&SDFile);
-        uint8_t test = 0;
-        // You can now print buffer to UART or debug
+        buffer[br] = 0; // \0
+        //f_sync(&SDFile);
+        closeRes = f_close(&SDFile);
     }
     //Engine_tick(HAL_GetTick());
 
@@ -492,8 +491,8 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.ClockBypass = SDIO_CLOCK_BYPASS_DISABLE;
   hsd.Init.ClockPowerSave = SDIO_CLOCK_POWER_SAVE_DISABLE;
   hsd.Init.BusWide = SDIO_BUS_WIDE_4B;
-  hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd.Init.ClockDiv = 18;
+  hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_ENABLE;
+  hsd.Init.ClockDiv = 2;
   /* USER CODE BEGIN SDIO_Init 2 */
 
   hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
@@ -659,6 +658,12 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+  /* DMA2_Stream6_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
 }
 
