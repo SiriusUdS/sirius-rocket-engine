@@ -174,6 +174,7 @@ int main(void)
   FRESULT mountRes = FR_OK;
   FRESULT openRes = FR_OK;
   FRESULT closeRes = FR_OK;
+  FRESULT writeRes = FR_OK;
   UINT br, bw;
   char buffer[100];
 
@@ -189,8 +190,8 @@ int main(void)
   { 
     // Write
     if (openRes == FR_OK) {
-        f_write(&SDFile, data, sizeof(data), &bw);
-        closeRes =  f_sync(&SDFile);
+      writeRes = f_write(&SDFile, data, sizeof(data), &bw);
+      closeRes =  f_sync(&SDFile);
     }
 
     // Read
