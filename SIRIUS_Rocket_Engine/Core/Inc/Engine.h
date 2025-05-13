@@ -22,6 +22,7 @@
 #include "../sirius-embedded-common/sirius-headers-common/Engine/EngineState.h"
 
 #include "../sirius-embedded-common/Inc/Device/Telecommunication/Telecommunication.h"
+#include "../sirius-embedded-common/Inc/Device/Telecommunication/XBEE.h"
 
 #include "stm32f4xx_hal.h"
 

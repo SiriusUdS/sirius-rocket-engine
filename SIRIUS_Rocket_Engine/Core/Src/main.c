@@ -65,7 +65,7 @@ volatile USB usb                      = {0};
 
 Valve valves[ENGINE_VALVE_AMOUNT]                                = {0};
 PressureSensor pressureSensors[ENGINE_PRESSURE_SENSOR_AMOUNT]    = {0};
-TemperatureSensor temperatureSensors[ENGINE_THERMISTANCE_AMOUNT] = {0};
+TemperatureSensor temperatureSensors[ENGINE_TEMPERATURE_SENSOR_AMOUNT] = {0};
 Telecommunication telecom = {0};
 
 /* USER CODE END PV */
@@ -922,7 +922,7 @@ void setupIgniter() {
 }
 
 void setupTemperatureSensors() {
-  for (uint8_t i = 0; i < ENGINE_THERMISTANCE_AMOUNT; i++) {
+  for (uint8_t i = 0; i < ENGINE_TEMPERATURE_SENSOR_AMOUNT; i++) {
     temperatureSensors[i].errorStatus.bits.notInitialized = 1;
     temperatureSensors[i].init = (TemperatureSensor_init)NTC3950_init;
   }
@@ -930,7 +930,7 @@ void setupTemperatureSensors() {
 
 void setupTelecommunication(){
   telecom.errorStatus.bits.notInitialized = 1;
-  telecom.init = (Telecommunication_init)TELECOM_init;
+  telecom.init = (Telecommunication_init)XBEE_init;
 }
 
 void setupPressureSensors() {

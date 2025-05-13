@@ -103,7 +103,7 @@ void executeInit(uint32_t timestamp_ms) {
   }
   engine.currentState = ENGINE_STATE_IDLE;
 
-  engine.telecom->setupTelecom((struct Telecommunication*) engine.telecom);
+  engine.telecom->config((struct Telecommunication*) engine.telecom);
 }
 
 void executeIdle(uint32_t timestamp_ms) {
@@ -133,45 +133,41 @@ void executeTest(uint32_t timestamp_ms) {
   TemperatureSensorPacket temperatureSensorTestPacket = {
     .fields = {
       .header = {
-        .values[0] = TEMPERATURE_SENSOR_DATA_HEADER_CODE & 0xFFFFFF00
+        .value = TELEMETRY_TEMPERATURE_SENSOR_DATA_HEADER_CODE & 0xFFFFFF00
       },
       .rawData = {
-        .members = {
-          .data = {
-            .rawTemperature = testValueThermistance
-          },
-          .status = engine.temperatureSensors[0].status,
-          .errorStatus = engine.temperatureSensors[0].errorStatus,
-          .timeStamp_ms = timestamp_ms
-        }
-      }
+        .data = {
+          .rawTemperature = testValueThermistance
+        },
+        .status = engine.temperatureSensors[0].status,
+        .errorStatus = engine.temperatureSensors[0].errorStatus,
+      }    
     }
   };
 
-  AccelerometerPacket accelerometerTestPacket = {
+  /*AccelerometerPacket accelerometerTestPacket = {
     .fields = {
       .header = {
-        .values[0] = ACCELEROMETER_DATA_HEADER_CODE & 0xFFFFFF00
+        .value = TELEMETRY_ACCELEROMETER_DATA_HEADER_CODE & 0xFFFFFF00
       },
       .rawData = {
-        .members = {
-          .data = {
-            .rawX = 1,
-            .rawY = 2,
-            .rawZ = 5
-          },
-          .status = {0},
-          .errorStatus = {0},
-          .timeStamp_ms = timestamp_ms
+        .data = {
+          .rawX = 1,
+          .rawY = 2,
+          .rawZ = 5
+        },
+        .status = {0},
+        .errorStatus = {0},
+        .timeStamp_ms = timestamp_ms  
+          
         }
       }
-    }
-  };
+    };*/
 
   if (HAL_GetTick() - previous >= 100) {
     previous = HAL_GetTick();
     testValueThermistance++;
-    temperatureSensorTestPacket.fields.rawData.members.data.rawTemperature = testValueThermistance;
+    temperatureSensorTestPacket.fields.rawData.data.rawTemperature = testValueThermistance;
     //engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
     //engine.usb->transmit((struct USB*)engine.usb, accelerometerTestPacket.data, sizeof(AccelerometerPacket) - 4);
     //engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
@@ -286,7 +282,7 @@ void initTemperatureSensors() {
   engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_7_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_7_THERMISTANCE_ADC_CHANNEL_INDEX];
   engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_8_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_8_THERMISTANCE_ADC_CHANNEL_INDEX];
 
-  for (uint8_t i = 0; i < ENGINE_THERMISTANCE_AMOUNT; i++) {
+  for (uint8_t i = 0; i < ENGINE_TEMPERATURE_SENSOR_AMOUNT; i++) {
     if (engine.temperatureSensors[i].init == FUNCTION_NULL_POINTER) {
       engine.temperatureSensors[i].errorStatus.bits.nullFunctionPointer = 1;
       continue;
@@ -313,7 +309,7 @@ void tickValves(uint32_t timestamp_ms) {
 }
 
 void tickTemperatureSensors() {
-  for (uint8_t i = 0; i < ENGINE_THERMISTANCE_AMOUNT; i++) {
+  for (uint8_t i = 0; i < ENGINE_TEMPERATURE_SENSOR_AMOUNT; i++) {
     engine.temperatureSensors[i].tick((struct TemperatureSensor*)&engine.temperatureSensors[i]);
   }
 }
