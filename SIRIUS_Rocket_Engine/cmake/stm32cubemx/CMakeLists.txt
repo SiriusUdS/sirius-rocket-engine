@@ -36,7 +36,10 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/sirius-embedded-common/Src/Device/Valve/HBL388.c
     ../../Core/sirius-embedded-common/Src/Device/Storage/Storage.c
     ../../Core/sirius-embedded-common/Src/Device/Storage/SDCard.c
+    ../../Core/sirius-embedded-common/Src/Device/Storage/ExternalFlash.c
     ../../Core/sirius-embedded-common/Src/Device/Telecommunication/Telecommunication.c
+    ../../Core/sirius-embedded-common/Src/Device/Telecommunication/XBEE.c
+    ../../Core/sirius-embedded-common/Src/Device/Igniter/EstesC6.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12Channel.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12ChannelHAL.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12.c
@@ -60,6 +63,7 @@ target_sources(stm32cubemx INTERFACE
     ../../USB_DEVICE/Target/usbd_conf.c
     ../../Middlewares/Third_Party/FatFs/src/ff.c
     ../../Middlewares/Third_Party/FatFs/src/diskio.c
+    ../../Middlewares/Third_Party/FatFs/src/option/ccsbcs.c
     ../../FATFS/Target/fatfs_platform.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c
@@ -94,6 +98,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sd.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_crc.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_sdmmc.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c
     ../../Core/Src/system_stm32f4xx.c

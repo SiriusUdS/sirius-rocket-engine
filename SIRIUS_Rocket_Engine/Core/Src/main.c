@@ -46,6 +46,8 @@
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
+CRC_HandleTypeDef hcrc;
+
 SD_HandleTypeDef hsd;
 DMA_HandleTypeDef hdma_sdio_rx;
 DMA_HandleTypeDef hdma_sdio_tx;
@@ -64,9 +66,17 @@ UART uart                             = {0};
 volatile USB usb                      = {0};
 
 Valve valves[ENGINE_VALVE_AMOUNT]                                = {0};
+Igniter igniters[ENGINE_IGNITER_AMOUNT] = {0};
 PressureSensor pressureSensors[ENGINE_PRESSURE_SENSOR_AMOUNT]    = {0};
 TemperatureSensor temperatureSensors[ENGINE_TEMPERATURE_SENSOR_AMOUNT] = {0};
-Telecommunication telecom = {0};
+Telecommunication telecomunication[ENGINE_TELECOMMUNICATION_AMOUNT] = {0};
+
+Storage storageDevices[ENGINE_STORAGE_AMOUNT] = {0};
+
+static ADCBuffer dmaAdcBuffer = {0};
+static ADCTimestampsBuffer dmaAdcTimestampsBuffer = {0};
+
+uint8_t data[512] = {0};
 
 /* USER CODE END PV */
 
@@ -79,6 +89,7 @@ static void MX_USART1_UART_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_SDIO_SD_Init(void);
 static void MX_SPI2_Init(void);
+static void MX_CRC_Init(void);
 /* USER CODE BEGIN PFP */
 
 static void setupGPIOs();
@@ -88,16 +99,17 @@ static void setupUART();
 static void setupUSB();
 
 static void setupValves();
-static void setupIgniter();
+static void setupIgniters();
 static void setupTemperatureSensors();
 static void setupPressureSensors();
 static void setupTelecommunication();
+static void setupStorageDevices();
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+//uint8_t data[4096/8] = {0};
 /* USER CODE END 0 */
 
 /**
@@ -137,6 +149,7 @@ int main(void)
   MX_SDIO_SD_Init();
   MX_SPI2_Init();
   MX_FATFS_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
 
   // Setup Peripherals
@@ -148,12 +161,13 @@ int main(void)
 
   // Setup Sensors/Devices
   setupValves();
-  setupIgniter();
+  setupIgniters();
   setupPressureSensors();
   setupTemperatureSensors();
   setupTelecommunication();
+  setupStorageDevices();
   
-  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors, &telecom);
+  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors, telecomunication, storageDevices, &dmaAdcBuffer, &dmaAdcTimestampsBuffer);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -165,7 +179,6 @@ int main(void)
     .externalInstance = (void*)&SDFatFS,
   };*/
 
-  uint8_t data[4096/8] = {0};
   data[0] = 1;
   data[1] = 2;
   data[2] = 3;
@@ -179,20 +192,20 @@ int main(void)
   char buffer[100];
 
   // necesarry because cpu init too fast for card
-  HAL_Delay(1000);
+  //HAL_Delay(1000);
   
-  mountRes = f_mount(&SDFatFS, (TCHAR const*) SDPath, 1);
+  /*mountRes = f_mount(&SDFatFS, (TCHAR const*) SDPath, 1);
   if (mountRes != FR_OK) {
     Error_Handler(); // or handle error
   }
-  openRes = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);
+  openRes = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);*/
   while (1)
   { 
     // Write
-    if (openRes == FR_OK) {
+    /*if (openRes == FR_OK) {
       writeRes = f_write(&SDFile, data, sizeof(data), &bw);
       closeRes =  f_sync(&SDFile);
-    }
+    }*/
 
     // Read
     //HAL_Delay(1000);
@@ -203,7 +216,7 @@ int main(void)
         //f_sync(&SDFile);
         closeRes = f_close(&SDFile);
     }*/
-    //Engine_tick(HAL_GetTick());
+    Engine_tick(HAL_GetTick());
 
     
     /*while(1){
@@ -467,6 +480,32 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief CRC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_CRC_Init(void)
+{
+
+  /* USER CODE BEGIN CRC_Init 0 */
+
+  /* USER CODE END CRC_Init 0 */
+
+  /* USER CODE BEGIN CRC_Init 1 */
+
+  /* USER CODE END CRC_Init 1 */
+  hcrc.Instance = CRC;
+  if (HAL_CRC_Init(&hcrc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN CRC_Init 2 */
+
+  /* USER CODE END CRC_Init 2 */
 
 }
 
@@ -917,8 +956,11 @@ void setupValves() {
   }
 }
 
-void setupIgniter() {
-
+void setupIgniters() {
+  for (uint8_t i = 0; i < ENGINE_IGNITER_AMOUNT; i++) {
+    igniters[i].errorStatus.bits.notInitialized = 1;
+    igniters[i].init = (Igniter_init)EstesC6_init;
+  }
 }
 
 void setupTemperatureSensors() {
@@ -929,8 +971,11 @@ void setupTemperatureSensors() {
 }
 
 void setupTelecommunication(){
-  telecom.errorStatus.bits.notInitialized = 1;
-  telecom.init = (Telecommunication_init)XBEE_init;
+  for (uint8_t i = 0; i < ENGINE_TELECOMMUNICATION_AMOUNT; i++) {
+    telecomunication[i].errorStatus.bits.notInitialized = 1;
+    telecomunication[i].init = (Telecommunication_init)XBEE_init;
+  }
+  
 }
 
 void setupPressureSensors() {
@@ -940,6 +985,17 @@ void setupPressureSensors() {
   }
 }
 
+void setupStorageDevices() {
+  for (uint8_t i = 0; i < ENGINE_STORAGE_AMOUNT; i++) {
+    storageDevices[i].errorStatus.bits.notInitialized = 1;
+  }
+  
+  storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].init = (Storage_init)SDCard_init;
+  storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].externalInstance = &SDFatFS;
+  storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].volumePath = SDPath;
+
+  storageDevices[ENGINE_STORAGE_EXTERNAL_FLASH_INDEX].init = (Storage_init)ExternalFlash_init;
+}
 /* USER CODE END 4 */
 
 /**

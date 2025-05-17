@@ -4,10 +4,10 @@ static volatile Engine engine;
 
 uint32_t lastTimestamp_ms;
 
-// Test variables, to be wiped out
-uint32_t previous;
-uint32_t previous2;
-uint16_t testValueThermistance = 0;
+uint16_t adcTimestampIndex;
+
+uint8_t sdCardBuffer[32768] = {0};
+uint8_t sdCardTimestampBuffer[2048] = {0};
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
@@ -28,14 +28,51 @@ static void initValves();
 static void initTemperatureSensors();
 static void initTelecom();
 
+static void initStorageDevices();
+
 static void tickValves(uint32_t timestamp_ms);
 static void tickTemperatureSensors();
 
-void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom) {
+static void handleDataStorage(uint32_t timestamp_ms);
+static void handleTelecommunication(uint32_t timestamp_ms);
+
+EngineStatusPacket statusPacket = {
+  .fields = {
+    .header = {
+      .bits = {
+        .type = TELEMETRY_HEADER_TYPE_STATUS,
+        .boardId = TELEMETRY_ENGINE_BOARD_ID
+      }
+    },
+    .timestamp_ms = 0,
+    .temperatureSensorErrorStatus = {0},
+    .pressureSensorErrorStatus = {0},
+    .engineErrorStatus = 0,
+    .engineStatus = 0,
+    .crc = 0
+  }
+};
+
+EngineTelemetryPacket telemetryPacket = {
+  .fields = {
+    .header = {
+      .bits = {
+        .type = TELEMETRY_HEADER_TYPE_TELEMETRY,
+        .boardId = TELEMETRY_ENGINE_BOARD_ID
+      }
+    },
+    .timestamp_ms = 0,
+    .adcValues = {0},
+    .crc = 0
+  }
+};
+
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, ADCBuffer* dmaAdcBuffer, ADCTimestampsBuffer* dmaAdcTimestampsBuffer) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
   
+  engine.dataGatheringMode = DATA_GATHERING_MODE_SLOW;
 
   engine.pwms   = pwms;
   engine.adc    = adc;
@@ -45,12 +82,21 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve
 
   engine.valves = valves;
   engine.temperatureSensors = temperatureSensors;
-  engine.telecom = telecom;
+  engine.telecommunication = telecom;
+
+  engine.storageDevices = storageDevices;
+  engine.sdCardBufferPosition = 0;
+
+  engine.dmaAdcBuffer = dmaAdcBuffer;
+  engine.dmaAdcTimestampsBuffer = dmaAdcTimestampsBuffer;
+
+  adcTimestampIndex = 0;
 
   initValves();
   initTemperatureSensors();
   initTelecom();
 
+  initStorageDevices();
   initADC();
   initPWMs();
   initGPIOs();
@@ -61,10 +107,14 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, USB* usb, Valve
 void Engine_tick(uint32_t timestamp_ms) {
   tickTemperatureSensors(timestamp_ms);
   tickValves(timestamp_ms);
+  engine.telecommunication->tick(engine.telecommunication, timestamp_ms);
+
+  handleDataStorage(timestamp_ms);
+  handleTelecommunication(timestamp_ms);
 
   Engine_execute(timestamp_ms);
   // TEST
-  executeTest(timestamp_ms);
+  //executeTest(timestamp_ms);
 }
 
 void Engine_execute(uint32_t timestamp_ms) {
@@ -73,7 +123,7 @@ void Engine_execute(uint32_t timestamp_ms) {
       executeInit(timestamp_ms);
       break;
     case ENGINE_STATE_IDLE:
-      //executeIdle(timestamp_ms);
+      executeIdle(timestamp_ms);
       break;
     case ENGINE_STATE_ARMING:
       executeArming(timestamp_ms);
@@ -103,26 +153,13 @@ void executeInit(uint32_t timestamp_ms) {
   }
   engine.currentState = ENGINE_STATE_IDLE;
 
-  engine.telecom->config((struct Telecommunication*) engine.telecom);
+  engine.telecommunication->config((struct Telecommunication*) engine.telecommunication);
 }
 
 void executeIdle(uint32_t timestamp_ms) {
-  uint8_t data[] = "FUCK TRUMP!";
-
-  
-  // Wait for arming command, collect data
-  /*if(HAL_GetTick() - previous2 >= 500){
-    previous2 = HAL_GetTick();
-
-    engine.telecom->sendData((struct Telecommunication*)engine.telecom, data, sizeof(data)-1);
-  }*/
-  /*engine.valves[ENGINE_IPA_VALVE_INDEX].open((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
-  HAL_Delay(1000);
-  engine.valves[ENGINE_IPA_VALVE_INDEX].setIdle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX]);
-  engine.valves[ENGINE_IPA_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
-  HAL_Delay(1000);
-  engine.valves[ENGINE_IPA_VALVE_INDEX].setIdle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX]);*/
-  
+  //memcpy(tempData, engine.dmaAdcBuffer->hex + (sizeof(*engine.dmaAdcBuffer)/2) - 1, sizeof(*engine.dmaAdcBuffer)/2);
+  //engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex + (sizeof(*engine.dmaAdcBuffer)/2) - 1 , sizeof(*engine.dmaAdcBuffer)/2);
+  uint8_t test = 0;
 }
 
 void executeAbort(uint32_t timestamp_ms) {
@@ -137,7 +174,7 @@ void executeTest(uint32_t timestamp_ms) {
       },
       .rawData = {
         .data = {
-          .rawTemperature = testValueThermistance
+          .rawTemperature = 0
         },
         .status = engine.temperatureSensors[0].status,
         .errorStatus = engine.temperatureSensors[0].errorStatus,
@@ -164,10 +201,9 @@ void executeTest(uint32_t timestamp_ms) {
       }
     };*/
 
-  if (HAL_GetTick() - previous >= 100) {
-    previous = HAL_GetTick();
-    testValueThermistance++;
-    temperatureSensorTestPacket.fields.rawData.data.rawTemperature = testValueThermistance;
+  if (HAL_GetTick() - lastTimestamp_ms >= 100) {
+    lastTimestamp_ms = HAL_GetTick();
+    temperatureSensorTestPacket.fields.rawData.data.rawTemperature = 0;
     //engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
     //engine.usb->transmit((struct USB*)engine.usb, accelerometerTestPacket.data, sizeof(AccelerometerPacket) - 4);
     //engine.usb->transmit((struct USB*)engine.usb, temperatureSensorTestPacket.data, sizeof(TemperatureSensorPacket));
@@ -211,7 +247,7 @@ void initADC() {
     engine.adc->errorStatus.bits.nullFunctionPointer = 1;
   }
   else {
-    engine.adc->init((struct ADC12*)engine.adc, ENGINE_ADC_CHANNEL_AMOUNT);
+    engine.adc->init((struct ADC12*)engine.adc, engine.dmaAdcBuffer, ENGINE_ADC_CHANNEL_AMOUNT);
   }
 
   for (uint8_t i = 0; i < ENGINE_ADC_CHANNEL_AMOUNT; i++) {
@@ -241,7 +277,7 @@ void initUART() {
     return;
   }
 
-  engine.uart->init(engine.uart);
+  engine.uart->init((struct UART*)engine.uart);
 }
 
 void initUSB() {
@@ -292,14 +328,25 @@ void initTemperatureSensors() {
   }
 }
 
-void initTelecom(){
-  if(engine.telecom->init == FUNCTION_NULL_POINTER){
-    engine.telecom->errorStatus.bits.nullFunctionPointer = 1;
+void initTelecom() {
+  if(engine.telecommunication->init == FUNCTION_NULL_POINTER){
+    engine.telecommunication->errorStatus.bits.nullFunctionPointer = 1;
     return;
   }
 
-  engine.telecom->init((struct Telecommunication*)engine.telecom);
-  engine.telecom->uart = engine.uart;
+  engine.telecommunication->init((struct Telecommunication*)engine.telecommunication);
+  engine.telecommunication->uart = engine.uart;
+}
+
+void initStorageDevices() {
+  for (uint8_t i = 0; i < ENGINE_STORAGE_AMOUNT; i++) {
+    if (engine.storageDevices[i].init == FUNCTION_NULL_POINTER) {
+      engine.storageDevices[i].errorStatus.bits.nullFunctionPointer = 1;
+      continue;
+    }
+
+    engine.storageDevices[i].init((struct Storage*)&engine.storageDevices[i]);
+  }
 }
 
 void tickValves(uint32_t timestamp_ms) {
@@ -312,4 +359,81 @@ void tickTemperatureSensors() {
   for (uint8_t i = 0; i < ENGINE_TEMPERATURE_SENSOR_AMOUNT; i++) {
     engine.temperatureSensors[i].tick((struct TemperatureSensor*)&engine.temperatureSensors[i]);
   }
+}
+
+void handleDataStorage(uint32_t timestamp_ms) {
+  if (engine.adc->status.bits.dmaFull) {
+    //engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, sdCardBuffer, sizeof(sdCardBuffer));
+    engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex + (sizeof(ADCBuffer) / 2), (sizeof(ADCBuffer) / 2));
+
+    engine.adc->status.bits.dmaFull = 0;
+    //engine.sdCardBufferPosition = 0;
+  }
+
+  if (engine.adc->status.bits.dmaHalfFull) {
+    engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex, (sizeof(ADCBuffer) / 2));
+    engine.adc->status.bits.dmaHalfFull = 0;
+  }
+
+  /*if (engine.sdCardTimestampsBufferFull) {
+    engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_TIMESTAMP_DESTINATION, sdCardTimestampBuffer, sizeof(sdCardTimestampBuffer));
+
+    engine.sdCardTimestampsBufferFull = 0;
+    adcTimestampIndex = 0;
+  }*/
+}
+
+void handleTelecommunication(uint32_t timestamp_ms) {
+  if (engine.telecommunicationTimestampTarget_ms <= timestamp_ms) {
+    if (engine.telecommunicationTelemetryPacketCount > TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS) {
+      engine.telecommunicationTelemetryPacketCount = 0;
+      statusPacket.fields.timestamp_ms = timestamp_ms;
+      statusPacket.fields.engineErrorStatus = engine.errorStatus.value;
+      statusPacket.fields.engineStatus = engine.status.value;
+      statusPacket.fields.pressureSensorErrorStatus[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX].errorStatus.value;
+      statusPacket.fields.pressureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX].errorStatus.value;
+      statusPacket.fields.temperatureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX] = engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].errorStatus.value;
+      statusPacket.fields.valvesStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status.value;
+      statusPacket.fields.valvesStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status.value;
+      statusPacket.fields.crc = 0;
+
+      engine.telecommunication->sendData(engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
+    }
+    else {
+      telemetryPacket.fields.timestamp_ms = timestamp_ms;
+      for (uint8_t i = 0; i < ENGINE_ADC_CHANNEL_AMOUNT; i++) {
+        telemetryPacket.fields.adcValues[i] = engine.dmaAdcBuffer->values[i];
+      }
+      telemetryPacket.fields.crc = 0;
+      engine.telecommunication->sendData(engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
+      engine.telecommunicationTelemetryPacketCount++;
+    }
+    engine.telecommunicationTimestampTarget_ms = timestamp_ms + TIME_BETWEEN_TELEMETRY_PACKETS_MS;
+  }
+}
+
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
+  if (engine.adc->status.bits.dmaHalfFull == 0) {
+    engine.adc->status.bits.dmaHalfFull = 1;
+  }
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
+  if (engine.adc->status.bits.dmaFull == 0) {
+    engine.adc->status.bits.dmaFull = 1;
+    /*memcpy(sdCardBuffer + engine.sdCardBufferPosition + sizeof(uint32_t), engine.dmaAdcBuffer->hex, sizeof(ADCBuffer));
+    engine.sdCardBufferPosition+=sizeof(ADCBuffer);
+
+    if (engine.sdCardBufferPosition >= sizeof(sdCardBuffer)) {
+      engine.adc->status.bits.dmaFull = 1;
+    }*/
+  }
+  
+  /*if (engine.sdCardTimestampsBufferFull == 0) {
+    sdCardTimestampBuffer[adcTimestampIndex++] = HAL_GetTick();
+    if (adcTimestampIndex >= sizeof(ADCTimestampsBuffer)) {
+      engine.sdCardTimestampsBufferFull = 1;
+    }
+  }*/
 }
