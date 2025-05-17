@@ -26,6 +26,7 @@
 
 #include "../sirius-embedded-common/Inc/Device/Telecommunication/Telecommunication.h"
 #include "../sirius-embedded-common/sirius-headers-common/Telecommunication/TelemetryPacket.h"
+#include "../sirius-embedded-common/sirius-headers-common/Telecommunication/BoardCommand.h"
 #include "../sirius-embedded-common/Inc/Device/Telecommunication/XBEE.h"
 
 #include "stm32f4xx_hal.h"
@@ -37,6 +38,8 @@
 
 #define TIME_BETWEEN_TELEMETRY_PACKETS_MS        (uint8_t)45
 #define TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS (uint8_t)10
+
+#define STORAGE_DELAY_BETWEEN_SLOW_SAVES_MS 250
 
 typedef struct {
   EngineErrorStatus errorStatus;
@@ -62,6 +65,7 @@ typedef struct {
   uint8_t            telecommunicationTelemetryPacketCount;
 
   uint8_t dataGatheringMode;
+  uint32_t storageTimestampTarget_ms;
 
   Storage* storageDevices;
   uint32_t sdCardBufferPosition;

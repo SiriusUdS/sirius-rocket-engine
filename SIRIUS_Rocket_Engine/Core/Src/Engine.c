@@ -36,6 +36,8 @@ static void tickTemperatureSensors();
 static void handleDataStorage(uint32_t timestamp_ms);
 static void handleTelecommunication(uint32_t timestamp_ms);
 
+BoardCommand currentCommand = {0};
+
 EngineStatusPacket statusPacket = {
   .fields = {
     .header = {
@@ -72,7 +74,7 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
   
-  engine.dataGatheringMode = DATA_GATHERING_MODE_SLOW;
+  engine.dataGatheringMode = DATA_GATHERING_MODE_FAST;
 
   engine.pwms   = pwms;
   engine.adc    = adc;
@@ -362,18 +364,23 @@ void tickTemperatureSensors() {
 }
 
 void handleDataStorage(uint32_t timestamp_ms) {
-  if (engine.adc->status.bits.dmaFull) {
-    //engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, sdCardBuffer, sizeof(sdCardBuffer));
-    engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex + (sizeof(ADCBuffer) / 2), (sizeof(ADCBuffer) / 2));
+  if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST || engine.storageTimestampTarget_ms <= timestamp_ms) {
+    engine.storageTimestampTarget_ms = timestamp_ms + STORAGE_DELAY_BETWEEN_SLOW_SAVES_MS;
 
-    engine.adc->status.bits.dmaFull = 0;
-    //engine.sdCardBufferPosition = 0;
+    if (engine.adc->status.bits.dmaFull) {
+      //engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, sdCardBuffer, sizeof(sdCardBuffer));
+      engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex + (sizeof(ADCBuffer) / 2), (sizeof(ADCBuffer) / 2));
+  
+      engine.adc->status.bits.dmaFull = 0;
+      //engine.sdCardBufferPosition = 0;
+    }
+  
+    if (engine.adc->status.bits.dmaHalfFull) {
+      engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex, (sizeof(ADCBuffer) / 2));
+      engine.adc->status.bits.dmaHalfFull = 0;
+    }
   }
-
-  if (engine.adc->status.bits.dmaHalfFull) {
-    engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex, (sizeof(ADCBuffer) / 2));
-    engine.adc->status.bits.dmaHalfFull = 0;
-  }
+  
 
   /*if (engine.sdCardTimestampsBufferFull) {
     engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_TIMESTAMP_DESTINATION, sdCardTimestampBuffer, sizeof(sdCardTimestampBuffer));
@@ -410,6 +417,7 @@ void handleTelecommunication(uint32_t timestamp_ms) {
     }
     engine.telecommunicationTimestampTarget_ms = timestamp_ms + TIME_BETWEEN_TELEMETRY_PACKETS_MS;
   }
+  engine.telecommunication->receiveData(engine.telecommunication, currentCommand.data, sizeof(BoardCommand));
 }
 
 
