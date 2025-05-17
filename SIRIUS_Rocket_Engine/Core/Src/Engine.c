@@ -368,11 +368,9 @@ void handleDataStorage(uint32_t timestamp_ms) {
     engine.storageTimestampTarget_ms = timestamp_ms + STORAGE_DELAY_BETWEEN_SLOW_SAVES_MS;
 
     if (engine.adc->status.bits.dmaFull) {
-      //engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, sdCardBuffer, sizeof(sdCardBuffer));
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex + (sizeof(ADCBuffer) / 2), (sizeof(ADCBuffer) / 2));
   
       engine.adc->status.bits.dmaFull = 0;
-      //engine.sdCardBufferPosition = 0;
     }
   
     if (engine.adc->status.bits.dmaHalfFull) {
@@ -405,6 +403,7 @@ void handleTelecommunication(uint32_t timestamp_ms) {
       statusPacket.fields.crc = 0;
 
       engine.telecommunication->sendData(engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
+      engine.usb->transmit((struct USB*)engine.usb, statusPacket.data, sizeof(EngineStatusPacket));
     }
     else {
       telemetryPacket.fields.timestamp_ms = timestamp_ms;
@@ -413,11 +412,25 @@ void handleTelecommunication(uint32_t timestamp_ms) {
       }
       telemetryPacket.fields.crc = 0;
       engine.telecommunication->sendData(engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
+      engine.usb->transmit((struct USB*)engine.usb, telemetryPacket.data, sizeof(EngineTelemetryPacket));
       engine.telecommunicationTelemetryPacketCount++;
     }
     engine.telecommunicationTimestampTarget_ms = timestamp_ms + TIME_BETWEEN_TELEMETRY_PACKETS_MS;
   }
   engine.telecommunication->receiveData(engine.telecommunication, currentCommand.data, sizeof(BoardCommand));
+  /*if (engine.usb->status.bits.rxDataReady == 1) {
+    //uint8_t* test = engine.usb->rxBuffer;
+    // header
+    for (uint8_t i = 0; i < 4; i++) {
+      currentCommand.data[i] = engine.usb->rxBuffer[i];
+    }
+
+    for (uint8_t i = 4; i < sizeof(BoardCommand); i++) {
+      currentCommand.data[i] = engine.usb->rxBuffer[i];
+    }
+    //currentCommand.data = engine.usb->rxBuffer;
+    engine.usb->status.bits.rxDataReady = 0;
+  }*/
 }
 
 
