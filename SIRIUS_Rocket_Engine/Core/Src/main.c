@@ -991,7 +991,8 @@ void setupStorageDevices() {
   }
   
   storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].init = (Storage_init)SDCard_init;
-  storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].externalInstance = &SDFatFS;
+  storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].externalInstance = &hsd;
+  storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].fs = &SDFatFS;
   storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].volumePath = SDPath;
 
   storageDevices[ENGINE_STORAGE_EXTERNAL_FLASH_INDEX].init = (Storage_init)ExternalFlash_init;
