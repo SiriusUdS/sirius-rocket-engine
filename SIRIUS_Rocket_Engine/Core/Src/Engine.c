@@ -117,7 +117,8 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
 void Engine_tick(uint32_t timestamp_ms) {
   tickTemperatureSensors(timestamp_ms);
   tickValves(timestamp_ms);
-  engine.telecommunication->tick(engine.telecommunication, timestamp_ms);
+  engine.telecommunication->tick((struct Telecommunication*)engine.telecommunication, timestamp_ms);
+  engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].tick(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], timestamp_ms);
 
   handleDataStorage(timestamp_ms);
   handleTelecommunication(timestamp_ms);

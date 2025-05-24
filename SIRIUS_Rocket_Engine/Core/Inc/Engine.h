@@ -41,7 +41,7 @@
 
 #define STORAGE_DELAY_BETWEEN_SLOW_SAVES_MS 250
 
-//#define USB_ENABLED 0
+#define USB_ENABLED 0
 
 typedef struct {
   EngineErrorStatus errorStatus;
