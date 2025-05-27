@@ -4,10 +4,25 @@ static volatile Engine engine;
 
 uint32_t lastTimestamp_ms;
 
-uint16_t adcTimestampIndex;
+uint16_t telemetryTimestampBufferIndex = 0;
+uint16_t telemetryBufferIndex = 0;
 
-uint8_t sdCardBuffer[32768] = {0};
-uint8_t sdCardTimestampBuffer[2048] = {0};
+typedef union {
+  uint16_t data[TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES];
+  uint8_t hex[TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES*sizeof(uint16_t)];
+}
+TelemetryTimestampBuffer;
+
+typedef union {
+  uint16_t data[TELEMETRY_BUFFER_SIZE_2BYTES];
+  uint8_t hex[TELEMETRY_BUFFER_SIZE_2BYTES*sizeof(uint16_t)];
+}
+TelemetryBuffer;
+
+volatile TelemetryTimestampBuffer timestampBuffer = {0};
+TelemetryBuffer slowModeTelemetryBuffer = {0};
+
+uint16_t filteredTelemetryValues[16] = {0};
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
@@ -35,7 +50,8 @@ static void tickTemperatureSensors();
 
 static void handleDataStorage(uint32_t timestamp_ms);
 static void handleTelecommunication(uint32_t timestamp_ms);
-static void handleCurrentCommand(uint8_t currentState);
+
+static void filterTelemetryValues(uint8_t index);
 
 static void sendTelemetryPacket(uint32_t timestamp_ms);
 static void sendStatusPacket(uint32_t timestamp_ms);
@@ -100,7 +116,7 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
   engine.dmaAdcBuffer = dmaAdcBuffer;
   engine.dmaAdcTimestampsBuffer = dmaAdcTimestampsBuffer;
 
-  adcTimestampIndex = 0;
+  //adcTimestampIndex = 0;
 
   initValves();
   initTemperatureSensors();
@@ -339,14 +355,6 @@ void handleDataStorage(uint32_t timestamp_ms) {
       engine.adc->status.bits.dmaHalfFull = 0;
     }
   }
-  
-
-  /*if (engine.sdCardTimestampsBufferFull) {
-    engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_TIMESTAMP_DESTINATION, sdCardTimestampBuffer, sizeof(sdCardTimestampBuffer));
-
-    engine.sdCardTimestampsBufferFull = 0;
-    adcTimestampIndex = 0;
-  }*/
 }
 
 void handleTelecommunication(uint32_t timestamp_ms) {
@@ -362,36 +370,13 @@ void handleTelecommunication(uint32_t timestamp_ms) {
     engine.telecommunicationTimestampTarget_ms = timestamp_ms + TIME_BETWEEN_TELEMETRY_PACKETS_MS;
   }
   getReceivedCommand();
-  /*if (engine.usb->status.bits.rxDataReady == 1) {
-    //uint8_t* test = engine.usb->rxBuffer;
-    // header
-    for (uint8_t i = 0; i < 4; i++) {
-      currentCommand.data[i] = engine.usb->rxBuffer[i];
-    }
-
-    for (uint8_t i = 4; i < sizeof(BoardCommand); i++) {
-      currentCommand.data[i] = engine.usb->rxBuffer[i];
-    }
-    //currentCommand.data = engine.usb->rxBuffer;
-    engine.usb->status.bits.rxDataReady = 0;
-  }*/
-}
-
-void handleCurrentCommand(uint8_t currentState) {
-  switch (currentCommand.fields.header.bits.commandCode)
-  {
-    //case :
-      //break;
-  
-    default:
-      break;
-  }
 }
 
 void sendTelemetryPacket(uint32_t timestamp_ms) {
   telemetryPacket.fields.timestamp_ms = timestamp_ms;
   for (uint8_t i = 0; i < ENGINE_ADC_CHANNEL_AMOUNT; i++) {
-    telemetryPacket.fields.adcValues[i] = engine.dmaAdcBuffer->values[i];
+    filterTelemetryValues(i);
+    telemetryPacket.fields.adcValues[i] = filteredTelemetryValues[i];
   }
   telemetryPacket.fields.crc = 0;
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
@@ -419,6 +404,32 @@ void sendStatusPacket(uint32_t timestamp_ms) {
 
 void getReceivedCommand() {
   engine.telecommunication->receiveData((struct Telecommunication*)engine.telecommunication, currentCommand.data, sizeof(BoardCommand));
+  #ifdef USB_ENABLED
+    if (engine.usb->status.bits.rxDataReady == 1) {
+      // header
+      for (uint8_t i = 0; i < 4; i++) {
+        currentCommand.data[i] = engine.usb->rxBuffer[i];
+      }
+
+      if (currentCommand.fields.header.bits.type == TELEMETRY_HEADER_TYPE_TELEMETRY &&
+          currentCommand.fields.header.bits.boardId == TELEMETRY_ENGINE_BOARD_ID) {
+        for (uint8_t i = 4; i < sizeof(BoardCommand); i++) {
+          currentCommand.data[i] = engine.usb->rxBuffer[i];
+        }
+      }
+      
+      engine.usb->status.bits.rxDataReady = 0;
+    }
+  #endif
+}
+
+void filterTelemetryValues(uint8_t index) {
+  uint32_t filteredValue = 0;
+  for (uint16_t i = 0; i < 64; i++) {
+    filteredValue += engine.dmaAdcBuffer->values[index + i*FILTER_TELEMETRY_OFFSET];
+  }
+  filteredTelemetryValues[index] = filteredValue >> 6;
+  //filteredTelemetryValues[index] = engine.dmaAdcBuffer->values[index];
 }
 
 uint8_t checkCommandCrc() {
@@ -428,24 +439,19 @@ uint8_t checkCommandCrc() {
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
   if (engine.adc->status.bits.dmaHalfFull == 0) {
     engine.adc->status.bits.dmaHalfFull = 1;
+    /*if (engine.dataGatheringMode = DATA_GATHERING_MODE_FAST) {
+      timestampBuffer.data[telemetryTimestampBufferIndex] = HAL_GetTick();
+      telemetryTimestampBufferIndex++;
+      if ()
+    }*/
   }
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
   if (engine.adc->status.bits.dmaFull == 0) {
     engine.adc->status.bits.dmaFull = 1;
-    /*memcpy(sdCardBuffer + engine.sdCardBufferPosition + sizeof(uint32_t), engine.dmaAdcBuffer->hex, sizeof(ADCBuffer));
-    engine.sdCardBufferPosition+=sizeof(ADCBuffer);
-
-    if (engine.sdCardBufferPosition >= sizeof(sdCardBuffer)) {
-      engine.adc->status.bits.dmaFull = 1;
+    /*if (engine.dataGatheringMode = DATA_GATHERING_MODE_FAST) {
+      timestampBuffer.data[telemetryTimestampBufferIndex] = HAL_GetTick();
     }*/
   }
-  
-  /*if (engine.sdCardTimestampsBufferFull == 0) {
-    sdCardTimestampBuffer[adcTimestampIndex++] = HAL_GetTick();
-    if (adcTimestampIndex >= sizeof(ADCTimestampsBuffer)) {
-      engine.sdCardTimestampsBufferFull = 1;
-    }
-  }*/
 }

@@ -41,7 +41,11 @@
 
 #define STORAGE_DELAY_BETWEEN_SLOW_SAVES_MS 250
 
-#define USB_ENABLED 0
+#define FILTER_TELEMETRY_OFFSET (((sizeof(ADCBuffer) / 2)/sizeof(uint16_t)) / 64)
+#define TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES 0x200
+#define TELEMETRY_BUFFER_SIZE_2BYTES 0x200
+
+#define USB_ENABLED
 
 typedef struct {
   EngineErrorStatus errorStatus;
