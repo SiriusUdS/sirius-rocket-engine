@@ -57,8 +57,6 @@ SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart1;
-DMA_HandleTypeDef hdma_usart1_rx;
-DMA_HandleTypeDef hdma_usart1_tx;
 
 /* USER CODE BEGIN PV */
 GPIO gpios[ENGINE_GPIO_AMOUNT]        = {0};
@@ -77,6 +75,8 @@ Storage storageDevices[ENGINE_STORAGE_AMOUNT] = {0};
 
 static ADCBuffer dmaAdcBuffer = {0};
 static ADCTimestampsBuffer dmaAdcTimestampsBuffer = {0};
+
+uint8_t data[512] = {0};
 
 /* USER CODE END PV */
 
@@ -167,14 +167,83 @@ int main(void)
   setupTelecommunication();
   setupStorageDevices();
   
-  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors, telecomunication, storageDevices, &dmaAdcBuffer, &dmaAdcTimestampsBuffer, igniters);
+  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors, telecomunication, storageDevices, &dmaAdcBuffer, &dmaAdcTimestampsBuffer);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  /*Storage storage = {
+    .fetchData = SDCard_fetch4kbData,
+    .storePage = SDCard_store4kbData,
+    .init = SDCard_init,
+    .externalInstance = (void*)&SDFatFS,
+  };*/
+
+  data[0] = 1;
+  data[1] = 2;
+  data[2] = 3;
+  data[3] = 4;
+
+  FRESULT mountRes = FR_OK;
+  FRESULT openRes = FR_OK;
+  FRESULT closeRes = FR_OK;
+  FRESULT writeRes = FR_OK;
+  UINT br, bw;
+  char buffer[100];
+
+  // necesarry because cpu init too fast for card
+  //HAL_Delay(1000);
+  
+  /*mountRes = f_mount(&SDFatFS, (TCHAR const*) SDPath, 1);
+  if (mountRes != FR_OK) {
+    Error_Handler(); // or handle error
+  }
+  openRes = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);*/
   while (1)
   { 
+    // Write
+    /*if (openRes == FR_OK) {
+      writeRes = f_write(&SDFile, data, sizeof(data), &bw);
+      closeRes =  f_sync(&SDFile);
+    }*/
+
+    // Read
+    //HAL_Delay(1000);
+    /*openRes = f_open(&SDFile, "test.txt", FA_READ);
+    if (openRes == FR_OK) {
+        f_read(&SDFile, buffer, sizeof(buffer)-1, &br);
+        buffer[br] = 0; // \0
+        //f_sync(&SDFile);
+        closeRes = f_close(&SDFile);
+    }*/
     Engine_tick(HAL_GetTick());
+
+    
+    /*while(1){
+      HAL_UART_Receive(&huart1, din, 10, HAL_MAX_DELAY);
+      if(din[0] == 'O'){
+        break;
+      }
+
+      in++;
+
+    }*/
+    //HAL_Delay(100);
+    // E_MATCH
+    /*HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
+    HAL_Delay(1000);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
+    HAL_Delay(1000);*/
+
+    // HEATPAD
+    //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
+    //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
+    /*HAL_Delay(750);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
+    HAL_Delay(250);*/
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -268,7 +337,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_0;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -627,18 +696,12 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-  /* DMA2_Stream2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
-  /* DMA2_Stream7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 
 }
 
@@ -897,7 +960,6 @@ void setupIgniters() {
   for (uint8_t i = 0; i < ENGINE_IGNITER_AMOUNT; i++) {
     igniters[i].errorStatus.bits.notInitialized = 1;
     igniters[i].init = (Igniter_init)EstesC6_init;
-    igniters[i].igniteDuration_ms = 250;
   }
 }
 

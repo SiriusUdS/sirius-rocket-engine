@@ -7,16 +7,22 @@ uint32_t lastTimestamp_ms;
 uint16_t telemetryTimestampBufferIndex = 0;
 uint16_t telemetryBufferIndex = 0;
 
-static uint8_t uartRxBuffer[sizeof(BoardCommand)];
+typedef union {
+  uint16_t data[TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES];
+  uint8_t hex[TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES*sizeof(uint16_t)];
+}
+TelemetryTimestampBuffer;
 
-uint32_t incomingPacketHeader;
-uint32_t incomingPacketBoardId;
-uint32_t incomingPacketType;
+typedef union {
+  uint16_t data[TELEMETRY_BUFFER_SIZE_2BYTES];
+  uint8_t hex[TELEMETRY_BUFFER_SIZE_2BYTES*sizeof(uint16_t)];
+}
+TelemetryBuffer;
 
 volatile TelemetryTimestampBuffer timestampBuffer = {0};
 TelemetryBuffer slowModeTelemetryBuffer = {0};
 
-uint16_t filteredTelemetryValues[ENGINE_ADC_CHANNEL_AMOUNT] = {0};
+uint16_t filteredTelemetryValues[16] = {0};
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
@@ -36,19 +42,14 @@ static void initUSB();
 static void initValves();
 static void initTemperatureSensors();
 static void initTelecom();
-static void initIgniters();
 
 static void initStorageDevices();
 
 static void tickValves(uint32_t timestamp_ms);
 static void tickTemperatureSensors();
-static void tickIgniters(uint32_t timestamp_ms);
 
 static void handleDataStorage(uint32_t timestamp_ms);
 static void handleTelecommunication(uint32_t timestamp_ms);
-static void handleIncomingPacket();
-
-static void parsePacket();
 
 static void filterTelemetryValues(uint8_t index);
 
@@ -65,15 +66,15 @@ EngineStatusPacket statusPacket = {
   .fields = {
     .header = {
       .bits = {
-        .type = TELEMETRY_TYPE_CODE,
+        .type = TELEMETRY_HEADER_TYPE_STATUS,
         .boardId = TELEMETRY_ENGINE_BOARD_ID
       }
     },
     .timestamp_ms = 0,
     .temperatureSensorErrorStatus = {0},
     .pressureSensorErrorStatus = {0},
-    .errorStatus = 0,
-    .status = 0,
+    .engineErrorStatus = 0,
+    .engineStatus = 0,
     .crc = 0
   }
 };
@@ -82,7 +83,7 @@ EngineTelemetryPacket telemetryPacket = {
   .fields = {
     .header = {
       .bits = {
-        .type = TELEMETRY_TYPE_CODE,
+        .type = TELEMETRY_HEADER_TYPE_TELEMETRY,
         .boardId = TELEMETRY_ENGINE_BOARD_ID
       }
     },
@@ -92,10 +93,10 @@ EngineTelemetryPacket telemetryPacket = {
   }
 };
 
-void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, ADCBuffer* dmaAdcBuffer, ADCTimestampsBuffer* dmaAdcTimestampsBuffer, Igniter* igniters) {
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, ADCBuffer* dmaAdcBuffer, ADCTimestampsBuffer* dmaAdcTimestampsBuffer) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
-  engine.status.bits.state  = ENGINE_STATE_INIT;
+  engine.currentState       = ENGINE_STATE_INIT;
   
   engine.dataGatheringMode = DATA_GATHERING_MODE_FAST;
 
@@ -108,7 +109,6 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
   engine.valves = valves;
   engine.temperatureSensors = temperatureSensors;
   engine.telecommunication = telecom;
-  engine.igniters = igniters;
 
   engine.storageDevices = storageDevices;
   engine.sdCardBufferPosition = 0;
@@ -116,10 +116,11 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
   engine.dmaAdcBuffer = dmaAdcBuffer;
   engine.dmaAdcTimestampsBuffer = dmaAdcTimestampsBuffer;
 
+  //adcTimestampIndex = 0;
+
   initValves();
   initTemperatureSensors();
   initTelecom();
-  initIgniters();
 
   initStorageDevices();
   initADC();
@@ -127,8 +128,6 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
   initGPIOs();
   initUART();
   initUSB();
-
-  engine.uart->status.bits.txReady = 1;
 }
 
 void Engine_tick(uint32_t timestamp_ms) {
@@ -139,7 +138,6 @@ void Engine_tick(uint32_t timestamp_ms) {
 
   handleDataStorage(timestamp_ms);
   handleTelecommunication(timestamp_ms);
-  handleIncomingPacket();
 
   Engine_execute(timestamp_ms);
   // TEST
@@ -147,7 +145,7 @@ void Engine_tick(uint32_t timestamp_ms) {
 }
 
 void Engine_execute(uint32_t timestamp_ms) {
-  switch (engine.status.bits.state) {
+  switch (engine.currentState) {
     case ENGINE_STATE_INIT:
       executeInit(timestamp_ms);
       break;
@@ -180,7 +178,7 @@ void executeInit(uint32_t timestamp_ms) {
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
     engine.valves[i].close((struct Valve*)&engine.valves[i], timestamp_ms);
   }
-  engine.status.bits.state = ENGINE_STATE_IDLE;
+  engine.currentState = ENGINE_STATE_IDLE;
 
   engine.telecommunication->config((struct Telecommunication*) engine.telecommunication);
 }
@@ -198,10 +196,7 @@ void executeArming(uint32_t timestamp_ms) {
 }
 
 void executeIgnition(uint32_t timestamp_ms) {
-  for (uint8_t i = 0; i < ENGINE_IGNITER_AMOUNT; i++) {
-    engine.igniters[i].ignite(&engine.igniters[i], timestamp_ms);
-  }
-  //engine.valves[ENGINE_IPA_VALVE_INDEX].open((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].open((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
 }
 
 void executePoweredFlight(uint32_t timestamp_ms) {
@@ -263,7 +258,6 @@ void initUART() {
   }
 
   engine.uart->init((struct UART*)engine.uart);
-  HAL_UART_Receive_DMA((UART_HandleTypeDef*)engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
 }
 
 void initUSB() {
@@ -273,20 +267,6 @@ void initUSB() {
   }
 
   engine.usb->init((struct USB*)engine.usb);
-}
-
-void initIgniters() {
-  engine.igniters[0].gpio = &engine.gpios[ENGINE_IGNITER_1_GPIO_INDEX];
-  engine.igniters[1].gpio = &engine.gpios[ENGINE_IGNITER_2_GPIO_INDEX];
-
-  for (uint8_t i = 0; i < ENGINE_IGNITER_AMOUNT; i++) {
-    if (engine.igniters[i].init == FUNCTION_NULL_POINTER) {
-      engine.igniters[i].errorStatus.bits.nullFunctionPointer = 1;
-      continue;
-    }
-
-    engine.igniters[i].init((struct Igniter*)&engine.igniters[i]);
-  }
 }
 
 void initValves() {
@@ -349,7 +329,6 @@ void initStorageDevices() {
   }
 }
 
-#pragma region TICKS
 void tickValves(uint32_t timestamp_ms) {
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
     engine.valves[i].tick((struct Valve*)&engine.valves[i], timestamp_ms);
@@ -362,16 +341,10 @@ void tickTemperatureSensors() {
   }
 }
 
-void tickIgniters(uint32_t timestamp_ms) {
-  for (uint8_t i = 0; i < ENGINE_IGNITER_AMOUNT; i++) {
-    engine.igniters[i].tick((struct Igniter*)&engine.igniters[i], timestamp_ms);
-  }
-}
-#pragma endregion
-
 void handleDataStorage(uint32_t timestamp_ms) {
-  // FOR FAST MODE, REPLACE LAST 4 BYTES WITH TIMESTAMP
-  if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST) {
+  if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST || engine.storageTimestampTarget_ms <= timestamp_ms) {
+    engine.storageTimestampTarget_ms = timestamp_ms + STORAGE_DELAY_BETWEEN_SLOW_SAVES_MS;
+
     if (engine.adc->status.bits.dmaFull) {
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex + (sizeof(ADCBuffer) / 2), (sizeof(ADCBuffer) / 2));
       engine.adc->status.bits.dmaFull = 0;
@@ -382,22 +355,11 @@ void handleDataStorage(uint32_t timestamp_ms) {
       engine.adc->status.bits.dmaHalfFull = 0;
     }
   }
-  else {
-    if (engine.status.bits.timestampBufferReady == 1) {
-      engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, timestampBuffer.hex, sizeof(TelemetryTimestampBuffer));
-      engine.status.bits.timestampBufferReady = 0;
-    }
-
-    if (engine.status.bits.slowModeBufferReady == 1) {
-      engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, slowModeTelemetryBuffer.hex, sizeof(TelemetryBuffer));
-      engine.status.bits.slowModeBufferReady = 0;
-    }
-  }
 }
 
 void handleTelecommunication(uint32_t timestamp_ms) {
   if (engine.telecommunicationTimestampTarget_ms <= timestamp_ms) {
-    if (engine.telecommunicationTelemetryPacketCount >= TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS) {
+    if (engine.telecommunicationTelemetryPacketCount > TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS) {
       engine.telecommunicationTelemetryPacketCount = 0;
       sendStatusPacket(timestamp_ms);
     }
@@ -407,68 +369,36 @@ void handleTelecommunication(uint32_t timestamp_ms) {
     }
     engine.telecommunicationTimestampTarget_ms = timestamp_ms + TIME_BETWEEN_TELEMETRY_PACKETS_MS;
   }
-  //getReceivedCommand();
-}
-
-void handleIncomingPacket() {
-  if (engine.telecommunication->uart->status.bits.rxDataReady == 1) {
-    // CHECK CRC
-    parsePacket();
-    engine.telecommunication->uart->status.bits.rxDataReady = 0;
-    HAL_UART_Receive_DMA((UART_HandleTypeDef*)engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
-  }
-}
-
-void parsePacket() {
-  if (incomingPacketType == BOARD_COMMAND_TYPE_CODE && incomingPacketBoardId == TELEMETRY_ENGINE_BOARD_ID) {
-    for (uint8_t i = 0; i < sizeof(BoardCommand); i++) {
-      currentCommand.data[i] = uartRxBuffer[i];
-    }
-  }
+  getReceivedCommand();
 }
 
 void sendTelemetryPacket(uint32_t timestamp_ms) {
   telemetryPacket.fields.timestamp_ms = timestamp_ms;
   for (uint8_t i = 0; i < ENGINE_ADC_CHANNEL_AMOUNT; i++) {
-    // DEFER FILTER AWAY SO THAT THIS FUNCTION DOES ONLY PACKET STUFF
     filterTelemetryValues(i);
     telemetryPacket.fields.adcValues[i] = filteredTelemetryValues[i];
-    slowModeTelemetryBuffer.data[telemetryBufferIndex + i] = filteredTelemetryValues[i];
-  }
-  telemetryBufferIndex+=ENGINE_ADC_CHANNEL_AMOUNT;
-  if (telemetryBufferIndex >= sizeof(TelemetryBuffer)) {
-    engine.status.bits.slowModeBufferReady = 1;
   }
   telemetryPacket.fields.crc = 0;
-
-  if (engine.uart->status.bits.txReady == 1) {
-    HAL_UART_Transmit_DMA((UART_HandleTypeDef*)engine.uart->externalHandle, telemetryPacket.data, sizeof(EngineTelemetryPacket));
-    engine.uart->status.bits.txReady = 0;
-  }
-  //engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
+  engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
   #ifdef USB_ENABLED
-    //engine.usb->transmit((struct USB*)engine.usb, telemetryPacket.data, sizeof(EngineTelemetryPacket));
+    engine.usb->transmit((struct USB*)engine.usb, telemetryPacket.data, sizeof(EngineTelemetryPacket));
   #endif
 }
 
 void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.timestamp_ms = timestamp_ms;
-  statusPacket.fields.errorStatus = engine.errorStatus.value;
-  statusPacket.fields.status = engine.status.value;
-  //statusPacket.fields.pressureSensorErrorStatus[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX].errorStatus.value;
-  //statusPacket.fields.pressureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX].errorStatus.value;
-  //statusPacket.fields.temperatureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX] = engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].errorStatus.value;
-  statusPacket.fields.valveStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status.value;
-  statusPacket.fields.valveStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status.value;
+  statusPacket.fields.engineErrorStatus = engine.errorStatus.value;
+  statusPacket.fields.engineStatus = engine.status.value;
+  statusPacket.fields.pressureSensorErrorStatus[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX].errorStatus.value;
+  statusPacket.fields.pressureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX].errorStatus.value;
+  statusPacket.fields.temperatureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX] = engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].errorStatus.value;
+  statusPacket.fields.valvesStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status.value;
+  statusPacket.fields.valvesStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status.value;
   statusPacket.fields.crc = 0;
 
-  if (engine.uart->status.bits.txReady == 1) {
-    HAL_UART_Transmit_DMA((UART_HandleTypeDef*)engine.uart->externalHandle, statusPacket.data, sizeof(EngineStatusPacket));
-    engine.uart->status.bits.txReady = 0;
-  }
-  //engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
+  engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
   #ifdef USB_ENABLED
-    //engine.usb->transmit((struct USB*)engine.usb, statusPacket.data, sizeof(EngineStatusPacket));
+    engine.usb->transmit((struct USB*)engine.usb, statusPacket.data, sizeof(EngineStatusPacket));
   #endif
 }
 
@@ -481,7 +411,7 @@ void getReceivedCommand() {
         currentCommand.data[i] = engine.usb->rxBuffer[i];
       }
 
-      if (currentCommand.fields.header.bits.type == TELEMETRY_TYPE_CODE &&
+      if (currentCommand.fields.header.bits.type == TELEMETRY_HEADER_TYPE_TELEMETRY &&
           currentCommand.fields.header.bits.boardId == TELEMETRY_ENGINE_BOARD_ID) {
         for (uint8_t i = 4; i < sizeof(BoardCommand); i++) {
           currentCommand.data[i] = engine.usb->rxBuffer[i];
@@ -498,7 +428,8 @@ void filterTelemetryValues(uint8_t index) {
   for (uint16_t i = 0; i < 64; i++) {
     filteredValue += engine.dmaAdcBuffer->values[index + i*FILTER_TELEMETRY_OFFSET];
   }
-  filteredTelemetryValues[index] = (uint16_t)(filteredValue >> 6UL);
+  filteredTelemetryValues[index] = filteredValue >> 6;
+  //filteredTelemetryValues[index] = engine.dmaAdcBuffer->values[index];
 }
 
 uint8_t checkCommandCrc() {
@@ -508,56 +439,19 @@ uint8_t checkCommandCrc() {
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
   if (engine.adc->status.bits.dmaHalfFull == 0) {
     engine.adc->status.bits.dmaHalfFull = 1;
-    if (DATA_GATHERING_MODE_FAST == engine.dataGatheringMode && engine.status.bits.timestampBufferReady == 0) {
+    /*if (engine.dataGatheringMode = DATA_GATHERING_MODE_FAST) {
       timestampBuffer.data[telemetryTimestampBufferIndex] = HAL_GetTick();
       telemetryTimestampBufferIndex++;
-      if (telemetryTimestampBufferIndex >= sizeof(TelemetryTimestampBuffer)) {
-        engine.status.bits.timestampBufferReady = 1;
-      }
-    }
+      if ()
+    }*/
   }
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
   if (engine.adc->status.bits.dmaFull == 0) {
     engine.adc->status.bits.dmaFull = 1;
-    if (DATA_GATHERING_MODE_FAST == engine.dataGatheringMode) {
+    /*if (engine.dataGatheringMode = DATA_GATHERING_MODE_FAST) {
       timestampBuffer.data[telemetryTimestampBufferIndex] = HAL_GetTick();
-      telemetryTimestampBufferIndex++;
-      if (telemetryTimestampBufferIndex >= sizeof(TelemetryTimestampBuffer)) {
-        engine.status.bits.timestampBufferReady = 1;
-      }
-    }
-  }
-}
-
-void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
-  if (huart->Instance == USART1) {
-    incomingPacketHeader = uartRxBuffer[0] & uartRxBuffer[1] << 8 & uartRxBuffer[2] << 16 & uartRxBuffer[3] << 24;
-    incomingPacketType = incomingPacketHeader & 0xFFFFF000UL;
-    incomingPacketBoardId = incomingPacketHeader & 0x000000E0;
-  }
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-  if (huart->Instance == USART1) {
-    if (engine.uart->status.bits.rxDataReady == 0) {
-      // CHECK CRC, IF NOT GOOD, RAISE FLAG FOR NEXT STATUS PACKET
-      engine.uart->status.bits.rxDataReady = 1;
-    }
-  }
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-  if (huart->Instance == USART1) {
-    if (engine.uart->status.bits.txReady == 0) {
-      engine.uart->status.bits.txReady = 1;
-    }
-  }
-}
-
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-  if (huart->Instance == USART1) {
-    HAL_UART_Receive_DMA((UART_HandleTypeDef*)engine.telecommunication->uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
+    }*/
   }
 }

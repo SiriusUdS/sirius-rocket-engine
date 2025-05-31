@@ -37,7 +37,7 @@
 #define DATA_GATHERING_MODE_FAST (uint8_t)0x01
 
 #define TIME_BETWEEN_TELEMETRY_PACKETS_MS        (uint8_t)91
-#define TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS (uint8_t)10
+#define TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS (uint8_t)5
 
 #define STORAGE_DELAY_BETWEEN_SLOW_SAVES_MS 250
 
@@ -46,18 +46,6 @@
 #define TELEMETRY_BUFFER_SIZE_2BYTES 0x200
 
 #define USB_ENABLED
-
-typedef union {
-  uint16_t data[TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES];
-  uint8_t hex[TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES*sizeof(uint16_t)];
-}
-TelemetryTimestampBuffer;
-
-typedef union {
-  uint16_t data[TELEMETRY_BUFFER_SIZE_2BYTES];
-  uint8_t hex[TELEMETRY_BUFFER_SIZE_2BYTES*sizeof(uint16_t)];
-}
-TelemetryBuffer;
 
 typedef struct {
   EngineErrorStatus errorStatus;
@@ -73,7 +61,6 @@ typedef struct {
   volatile USB* usb;
 
   Valve* valves;
-  Igniter* igniters;
 
   TemperatureSensor* temperatureSensors;
 
@@ -98,7 +85,7 @@ typedef struct {
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, ADCBuffer* dmaAdcBuffer, ADCTimestampsBuffer* dmaAdcTimestampsBuffer, Igniter* igniters);
+extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, ADCBuffer* dmaAdcBuffer, ADCTimestampsBuffer* dmaAdcTimestampsBuffer);
 
 extern void Engine_tick(uint32_t timestamp_ms);
 
