@@ -66,15 +66,15 @@ EngineStatusPacket statusPacket = {
   .fields = {
     .header = {
       .bits = {
-        .type = TELEMETRY_HEADER_TYPE_STATUS,
+        .type = STATUS_TYPE_CODE,
         .boardId = TELEMETRY_ENGINE_BOARD_ID
       }
     },
     .timestamp_ms = 0,
-    .temperatureSensorErrorStatus = {0},
-    .pressureSensorErrorStatus = {0},
-    .engineErrorStatus = 0,
-    .engineStatus = 0,
+    //.temperatureSensorErrorStatus = {0},
+    //.pressureSensorErrorStatus = {0},
+    //.engineErrorStatus = 0,
+    //.engineStatus = 0,
     .crc = 0
   }
 };
@@ -83,7 +83,7 @@ EngineTelemetryPacket telemetryPacket = {
   .fields = {
     .header = {
       .bits = {
-        .type = TELEMETRY_HEADER_TYPE_TELEMETRY,
+        .type = TELEMETRY_TYPE_CODE,
         .boardId = TELEMETRY_ENGINE_BOARD_ID
       }
     },
@@ -387,13 +387,13 @@ void sendTelemetryPacket(uint32_t timestamp_ms) {
 
 void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.timestamp_ms = timestamp_ms;
-  statusPacket.fields.engineErrorStatus = engine.errorStatus.value;
-  statusPacket.fields.engineStatus = engine.status.value;
-  statusPacket.fields.pressureSensorErrorStatus[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX].errorStatus.value;
-  statusPacket.fields.pressureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX].errorStatus.value;
-  statusPacket.fields.temperatureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX] = engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].errorStatus.value;
-  statusPacket.fields.valvesStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status.value;
-  statusPacket.fields.valvesStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status.value;
+  //statusPacket.fields.engineErrorStatus = engine.errorStatus.value;
+  //statusPacket.fields.engineStatus = engine.status.value;
+  //statusPacket.fields.pressureSensorErrorStatus[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX].errorStatus.value;
+  //statusPacket.fields.pressureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX].errorStatus.value;
+  //statusPacket.fields.temperatureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX] = engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].errorStatus.value;
+  //statusPacket.fields.valvesStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status.value;
+  //statusPacket.fields.valvesStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status.value;
   statusPacket.fields.crc = 0;
 
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
@@ -411,7 +411,7 @@ void getReceivedCommand() {
         currentCommand.data[i] = engine.usb->rxBuffer[i];
       }
 
-      if (currentCommand.fields.header.bits.type == TELEMETRY_HEADER_TYPE_TELEMETRY &&
+      if (currentCommand.fields.header.bits.type == TELEMETRY_TYPE_CODE &&
           currentCommand.fields.header.bits.boardId == TELEMETRY_ENGINE_BOARD_ID) {
         for (uint8_t i = 4; i < sizeof(BoardCommand); i++) {
           currentCommand.data[i] = engine.usb->rxBuffer[i];
