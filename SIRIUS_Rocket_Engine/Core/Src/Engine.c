@@ -2,25 +2,11 @@
 
 static volatile Engine engine;
 
-uint32_t lastTimestamp_ms;
+uint32_t adcHalfFullTimestamp_ms = 0;
+uint32_t adcFullTimestamp_ms = 0;
 
 uint16_t telemetryTimestampBufferIndex = 0;
 uint16_t telemetryBufferIndex = 0;
-
-typedef union {
-  uint16_t data[TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES];
-  uint8_t hex[TELEMETRY_TIMESTAMP_BUFFER_SIZE_2BYTES*sizeof(uint16_t)];
-}
-TelemetryTimestampBuffer;
-
-typedef union {
-  uint16_t data[TELEMETRY_BUFFER_SIZE_2BYTES];
-  uint8_t hex[TELEMETRY_BUFFER_SIZE_2BYTES*sizeof(uint16_t)];
-}
-TelemetryBuffer;
-
-volatile TelemetryTimestampBuffer timestampBuffer = {0};
-TelemetryBuffer slowModeTelemetryBuffer = {0};
 
 uint16_t filteredTelemetryValues[16] = {0};
 
@@ -93,7 +79,7 @@ EngineTelemetryPacket telemetryPacket = {
   }
 };
 
-void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, ADCBuffer* dmaAdcBuffer, ADCTimestampsBuffer* dmaAdcTimestampsBuffer) {
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
@@ -113,8 +99,7 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
   engine.storageDevices = storageDevices;
   engine.sdCardBufferPosition = 0;
 
-  engine.dmaAdcBuffer = dmaAdcBuffer;
-  engine.dmaAdcTimestampsBuffer = dmaAdcTimestampsBuffer;
+  engine.sdCardBuffer = sdCardBuffer;
 
   //adcTimestampIndex = 0;
 
@@ -134,10 +119,10 @@ void Engine_tick(uint32_t timestamp_ms) {
   tickTemperatureSensors(timestamp_ms);
   tickValves(timestamp_ms);
   engine.telecommunication->tick((struct Telecommunication*)engine.telecommunication, timestamp_ms);
-  engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].tick(&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], timestamp_ms);
+  engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].tick((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], timestamp_ms);
 
   handleDataStorage(timestamp_ms);
-  handleTelecommunication(timestamp_ms);
+  //handleTelecommunication(timestamp_ms);
 
   Engine_execute(timestamp_ms);
   // TEST
@@ -227,7 +212,7 @@ void initADC() {
     engine.adc->errorStatus.bits.nullFunctionPointer = 1;
   }
   else {
-    engine.adc->init((struct ADC12*)engine.adc, engine.dmaAdcBuffer, ENGINE_ADC_CHANNEL_AMOUNT);
+    engine.adc->init((struct ADC12*)engine.adc, engine.sdCardBuffer->values, sizeof(EngineSDCardBuffer), ENGINE_ADC_CHANNEL_AMOUNT);
   }
 
   for (uint8_t i = 0; i < ENGINE_ADC_CHANNEL_AMOUNT; i++) {
@@ -342,18 +327,61 @@ void tickTemperatureSensors() {
 }
 
 void handleDataStorage(uint32_t timestamp_ms) {
-  if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST || engine.storageTimestampTarget_ms <= timestamp_ms) {
-    engine.storageTimestampTarget_ms = timestamp_ms + STORAGE_DELAY_BETWEEN_SLOW_SAVES_MS;
-
+  if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST) {
     if (engine.adc->status.bits.dmaFull) {
-      engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex + (sizeof(ADCBuffer) / 2), (sizeof(ADCBuffer) / 2));
+      engine.sdCardBuffer->sdData[1].footer.timestamp_ms = adcFullTimestamp_ms;
+      engine.sdCardBuffer->sdData[1].footer.status = engine.status.value;
+      engine.sdCardBuffer->sdData[1].footer.errorStatus = engine.errorStatus.value;
+      engine.sdCardBuffer->sdData[1].footer.valveStatus[0] = engine.valves[0].status.value;
+      engine.sdCardBuffer->sdData[1].footer.valveStatus[1] = engine.valves[1].status.value;
+      engine.sdCardBuffer->sdData[1].footer.valveErrorStatus[0] = engine.valves[0].errorStatus.value;
+      engine.sdCardBuffer->sdData[1].footer.valveErrorStatus[1] = engine.valves[1].errorStatus.value;
+      // Those are the BoardCommand
+      engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
+      engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
+      engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
+
+      for (uint8_t i = 0; i < 32;i++) {
+        engine.sdCardBuffer->sdData[1].footer.padding[i] = 0;
+      }
+
+      for (uint8_t i = 0; i < 16;i++) {
+        engine.sdCardBuffer->sdData[1].footer.signature[i] = 0;
+      }
+
+      engine.sdCardBuffer->sdData[1].footer.crc = 0;
+      engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex + (sizeof(EngineSDCardBuffer) / 2)), (sizeof(EngineSDCardBuffer) / 2));
       engine.adc->status.bits.dmaFull = 0;
     }
   
     if (engine.adc->status.bits.dmaHalfFull) {
-      engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_ADC_DESTINATION, engine.dmaAdcBuffer->hex, (sizeof(ADCBuffer) / 2));
+      engine.sdCardBuffer->sdData[0].footer.timestamp_ms = adcFullTimestamp_ms;
+      engine.sdCardBuffer->sdData[0].footer.status = engine.status.value;
+      engine.sdCardBuffer->sdData[0].footer.errorStatus = engine.errorStatus.value;
+      engine.sdCardBuffer->sdData[0].footer.valveStatus[0] = engine.valves[0].status.value;
+      engine.sdCardBuffer->sdData[0].footer.valveStatus[1] = engine.valves[1].status.value;
+      engine.sdCardBuffer->sdData[0].footer.valveErrorStatus[0] = engine.valves[0].errorStatus.value;
+      engine.sdCardBuffer->sdData[0].footer.valveErrorStatus[1] = engine.valves[1].errorStatus.value;
+      // Those are the BoardCommand
+      engine.sdCardBuffer->sdData[0].footer.currentCommand[0] = 0;
+      engine.sdCardBuffer->sdData[0].footer.currentCommand[0] = 0;
+      engine.sdCardBuffer->sdData[0].footer.currentCommand[0] = 0;
+
+      for (uint8_t i = 0; i < 32;i++) {
+        engine.sdCardBuffer->sdData[0].footer.padding[i] = 0;
+      }
+
+      for (uint8_t i = 0; i < 16;i++) {
+        engine.sdCardBuffer->sdData[0].footer.signature[i] = 0;
+      }
+
+      engine.sdCardBuffer->sdData[0].footer.crc = 0;
+      engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex), (sizeof(EngineSDCardBuffer) / 2));
       engine.adc->status.bits.dmaHalfFull = 0;
     }
+  }
+  else {
+    // Check if slow buffer is filled
   }
 }
 
@@ -426,7 +454,7 @@ void getReceivedCommand() {
 void filterTelemetryValues(uint8_t index) {
   uint32_t filteredValue = 0;
   for (uint16_t i = 0; i < 64; i++) {
-    filteredValue += engine.dmaAdcBuffer->values[index + i*FILTER_TELEMETRY_OFFSET];
+    filteredValue += engine.sdCardBuffer->values[index + i*FILTER_TELEMETRY_OFFSET];
   }
   filteredTelemetryValues[index] = filteredValue >> 6;
   //filteredTelemetryValues[index] = engine.dmaAdcBuffer->values[index];
@@ -439,19 +467,13 @@ uint8_t checkCommandCrc() {
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
   if (engine.adc->status.bits.dmaHalfFull == 0) {
     engine.adc->status.bits.dmaHalfFull = 1;
-    /*if (engine.dataGatheringMode = DATA_GATHERING_MODE_FAST) {
-      timestampBuffer.data[telemetryTimestampBufferIndex] = HAL_GetTick();
-      telemetryTimestampBufferIndex++;
-      if ()
-    }*/
+    adcHalfFullTimestamp_ms = HAL_GetTick();
   }
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-  if (engine.adc->status.bits.dmaFull == 0) {
+  if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST && engine.adc->status.bits.dmaFull == 0) {
     engine.adc->status.bits.dmaFull = 1;
-    /*if (engine.dataGatheringMode = DATA_GATHERING_MODE_FAST) {
-      timestampBuffer.data[telemetryTimestampBufferIndex] = HAL_GetTick();
-    }*/
+    adcFullTimestamp_ms = HAL_GetTick();
   }
 }

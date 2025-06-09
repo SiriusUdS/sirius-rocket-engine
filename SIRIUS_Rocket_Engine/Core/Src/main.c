@@ -73,10 +73,7 @@ Telecommunication telecomunication[ENGINE_TELECOMMUNICATION_AMOUNT] = {0};
 
 Storage storageDevices[ENGINE_STORAGE_AMOUNT] = {0};
 
-static ADCBuffer dmaAdcBuffer = {0};
-static ADCTimestampsBuffer dmaAdcTimestampsBuffer = {0};
-
-uint8_t data[512] = {0};
+static volatile EngineSDCardBuffer sdCardBuffer = {0};
 
 /* USER CODE END PV */
 
@@ -167,83 +164,14 @@ int main(void)
   setupTelecommunication();
   setupStorageDevices();
   
-  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors, telecomunication, storageDevices, &dmaAdcBuffer, &dmaAdcTimestampsBuffer);
+  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors, telecomunication, storageDevices, &sdCardBuffer);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  /*Storage storage = {
-    .fetchData = SDCard_fetch4kbData,
-    .storePage = SDCard_store4kbData,
-    .init = SDCard_init,
-    .externalInstance = (void*)&SDFatFS,
-  };*/
-
-  data[0] = 1;
-  data[1] = 2;
-  data[2] = 3;
-  data[3] = 4;
-
-  FRESULT mountRes = FR_OK;
-  FRESULT openRes = FR_OK;
-  FRESULT closeRes = FR_OK;
-  FRESULT writeRes = FR_OK;
-  UINT br, bw;
-  char buffer[100];
-
-  // necesarry because cpu init too fast for card
-  //HAL_Delay(1000);
-  
-  /*mountRes = f_mount(&SDFatFS, (TCHAR const*) SDPath, 1);
-  if (mountRes != FR_OK) {
-    Error_Handler(); // or handle error
-  }
-  openRes = f_open(&SDFile, "test.txt", FA_WRITE | FA_CREATE_ALWAYS);*/
   while (1)
   { 
-    // Write
-    /*if (openRes == FR_OK) {
-      writeRes = f_write(&SDFile, data, sizeof(data), &bw);
-      closeRes =  f_sync(&SDFile);
-    }*/
-
-    // Read
-    //HAL_Delay(1000);
-    /*openRes = f_open(&SDFile, "test.txt", FA_READ);
-    if (openRes == FR_OK) {
-        f_read(&SDFile, buffer, sizeof(buffer)-1, &br);
-        buffer[br] = 0; // \0
-        //f_sync(&SDFile);
-        closeRes = f_close(&SDFile);
-    }*/
     Engine_tick(HAL_GetTick());
-
-    
-    /*while(1){
-      HAL_UART_Receive(&huart1, din, 10, HAL_MAX_DELAY);
-      if(din[0] == 'O'){
-        break;
-      }
-
-      in++;
-
-    }*/
-    //HAL_Delay(100);
-    // E_MATCH
-    /*HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_SET);
-    HAL_Delay(1000);
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_0, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
-    HAL_Delay(1000);*/
-
-    // HEATPAD
-    //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_SET);
-    //HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_SET);
-    /*HAL_Delay(750);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_10, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_11, GPIO_PIN_RESET);
-    HAL_Delay(250);*/
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
