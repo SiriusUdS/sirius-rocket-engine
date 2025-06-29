@@ -57,6 +57,7 @@ SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USER CODE BEGIN PV */
 GPIO gpios[ENGINE_GPIO_AMOUNT]        = {0};
@@ -72,6 +73,9 @@ TemperatureSensor temperatureSensors[ENGINE_TEMPERATURE_SENSOR_AMOUNT] = {0};
 Telecommunication telecomunication[ENGINE_TELECOMMUNICATION_AMOUNT] = {0};
 
 Storage storageDevices[ENGINE_STORAGE_AMOUNT] = {0};
+
+XBeeReceiveAPIPacket receive;
+XBeeSendAPIPacket api;
 
 static volatile EngineSDCardBuffer sdCardBuffer = {0};
 
@@ -101,7 +105,59 @@ static void setupTemperatureSensors();
 static void setupPressureSensors();
 static void setupTelecommunication();
 static void setupStorageDevices();
+void process_received_data(uint8_t*, uint16_t);
 
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+    if (huart->Instance == USART1) {  // Ensure it's the correct UART instance
+        if(telecomunication->receivePacket.bits.del != DELIMITER){
+          __HAL_DMA_DISABLE(&hdma_usart1_rx);
+          memset(telecomunication->receivePacket.data, 0, RECEIVE_PACKET_LENGHT);
+          __HAL_DMA_ENABLE(&hdma_usart1_rx);
+          //memset(receive.data, 0, RECEIVE_PACKET_LENGHT);
+          __HAL_UART_CLEAR_FLAG(&huart1, UART_FLAG_IDLE);
+          return;
+        }
+        process_received_data(telecomunication->receivePacket.data, sizeof(telecomunication->receivePacket.data));  // Process received data
+        
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, telecomunication->receivePacket.data, RECEIVE_PACKET_LENGHT);  // Restart reception
+        
+
+    }
+}
+
+void USART1_IRQHandler(void) {
+    if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE)) {
+          // Clear flag
+        __HAL_UART_CLEAR_FLAG(&huart1, UART_FLAG_IDLE);
+        // Start recording data via DMA after idle detection
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, telecomunication->receivePacket.data, RECEIVE_PACKET_LENGHT);
+    }
+}
+
+uint8_t donnes[] = {0x42,0x4F,0x4E,0x4A,0x4F,0x55,0x52,0x20,0x4C,0x45,0x53,0x20,0x58,0x42,0x45,0x45,0x53,0x20,0x44,0x27,0x41,0x4D,0x4F,0x55,0x52,0x20,0x51,0x55,0x27,0x4F,0x4E,0x20,0x44,0xC9,0x54,0x45,0x53,0x54,0x45,0x20,0x54,0x42,0x4B,0x21};
+
+int failed = 0;
+int success = 0;
+
+void process_received_data(uint8_t *data, uint16_t size){
+  usb.transmit(&usb, data, size);
+  if(size != 44){
+    failed++;
+    return;
+  }
+  for(int i=0; i < size; i++){
+    if(*(data+i) != donnes[i]){
+      failed++;
+      return;
+    }
+  }
+
+  success++;
+  if((success % 3) == 0){
+    HAL_UART_Transmit(&huart1, api.data, SEND_PACKET_LENGHT, HAL_MAX_DELAY);
+  }
+  
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -624,6 +680,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
