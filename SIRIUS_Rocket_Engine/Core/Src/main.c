@@ -74,8 +74,8 @@ Telecommunication telecomunication[ENGINE_TELECOMMUNICATION_AMOUNT] = {0};
 
 Storage storageDevices[ENGINE_STORAGE_AMOUNT] = {0};
 
-XBeeReceiveAPIPacket receive;
-XBeeSendAPIPacket api;
+XBeeReceiveAPIPacket receive= {0};
+XBeeSendAPIPacket api = {0};
 
 static volatile EngineSDCardBuffer sdCardBuffer = {0};
 
@@ -120,8 +120,6 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
         process_received_data(telecomunication->receivePacket.data, sizeof(telecomunication->receivePacket.data));  // Process received data
         
         HAL_UARTEx_ReceiveToIdle_DMA(&huart1, telecomunication->receivePacket.data, RECEIVE_PACKET_LENGHT);  // Restart reception
-        
-
     }
 }
 
@@ -228,6 +226,9 @@ int main(void)
   while (1)
   { 
     Engine_tick(HAL_GetTick());
+    //uint8_t di[] = {0x7E,0x00,0x3A,0x10,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,0xFF,0xFE,0x00,0x00,0x44,0x35,0x05,0x00,0x52,0x84,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x9F};
+    //HAL_UART_Transmit(&huart1, di, sizeof(di), 500);
+    //HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -690,6 +691,16 @@ static void MX_DMA_Init(void)
   HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
+    hdma_usart1_rx.Instance = DMA2_Stream2;  // Replace X with your stream number<
+
+  hdma_usart1_rx.Init.FIFOMode = DMA_FIFOMODE_ENABLE;  // Enable FIFO
+  hdma_usart1_rx.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_FULL;
+  
+  HAL_DMA_Init(&hdma_usart1_rx);
+  __HAL_LINKDMA(&huart1, hdmarx, hdma_usart1_rx);
+
+    // Enable UART Idle Interrupt
+  __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
 }
 
 /**
