@@ -122,7 +122,7 @@ void Engine_tick(uint32_t timestamp_ms) {
   engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].tick((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], timestamp_ms);
 
   handleDataStorage(timestamp_ms);
-  handleTelecommunication(timestamp_ms);
+  //handleTelecommunication(timestamp_ms);
 
   Engine_execute(timestamp_ms);
   // TEST
@@ -396,11 +396,8 @@ void handleTelecommunication(uint32_t timestamp_ms) {
       engine.telecommunicationTelemetryPacketCount++;
     }
     engine.telecommunicationTimestampTarget_ms = timestamp_ms + TIME_BETWEEN_TELEMETRY_PACKETS_MS;
-    //uint8_t di[] = {0x44,0x35,0x05,0x00,0x52,0x84,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-
-    //engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, di, sizeof(EngineTelemetryPacket));
   }
-  //getReceivedCommand();
+  getReceivedCommand();
 }
 
 void sendTelemetryPacket(uint32_t timestamp_ms) {
