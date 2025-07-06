@@ -10,6 +10,9 @@ uint16_t telemetryBufferIndex = 0;
 
 uint16_t filteredTelemetryValues[16] = {0};
 
+uint8_t uart_rx_buffer[132] = {0};
+uint8_t uart_tx_buffer[44] = {0};
+
 static void executeInit(uint32_t timestamp_ms);
 static void executeIdle(uint32_t timestamp_ms);
 static void executeAbort(uint32_t timestamp_ms);
@@ -36,6 +39,11 @@ static void tickTemperatureSensors();
 
 static void handleDataStorage(uint32_t timestamp_ms);
 static void handleTelecommunication(uint32_t timestamp_ms);
+static void handleCurrentCommand();
+static void handleCurrentCommandIdle();
+static void handleCurrentCommandArming();
+static void handleCurrentCommandActive();
+static void handleCurrentCommandAbort();
 
 static void filterTelemetryValues(uint8_t index);
 
@@ -122,7 +130,7 @@ void Engine_tick(uint32_t timestamp_ms) {
   engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].tick((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], timestamp_ms);
 
   handleDataStorage(timestamp_ms);
-  //handleTelecommunication(timestamp_ms);
+  handleTelecommunication(timestamp_ms);
 
   Engine_execute(timestamp_ms);
   // TEST
@@ -243,6 +251,7 @@ void initUART() {
   }
 
   engine.uart->init((struct UART*)engine.uart);
+  HAL_UART_Receive_DMA(engine.uart->externalHandle, uart_rx_buffer, sizeof(uart_rx_buffer));
 }
 
 void initUSB() {
@@ -380,9 +389,6 @@ void handleDataStorage(uint32_t timestamp_ms) {
       engine.adc->status.bits.dmaHalfFull = 0;
     }
   }
-  else {
-    // Check if slow buffer is filled
-  }
 }
 
 void handleTelecommunication(uint32_t timestamp_ms) {
@@ -397,7 +403,36 @@ void handleTelecommunication(uint32_t timestamp_ms) {
     }
     engine.telecommunicationTimestampTarget_ms = timestamp_ms + TIME_BETWEEN_TELEMETRY_PACKETS_MS;
   }
-  getReceivedCommand();
+}
+
+void handleCurrentCommand() {
+  switch (engine.currentState) {
+    case ENGINE_STATE_INIT:
+      break;
+    case ENGINE_STATE_IDLE:
+    case ENGINE_STATE_TESTING:
+      handleCurrentCommandIdle();
+      break;
+    case ENGINE_STATE_ARMING:
+      //handleCurrentCommandArming();
+      break;
+    case ENGINE_STATE_IGNITION:
+    case ENGINE_STATE_LAUNCH:
+    case ENGINE_STATE_POWERED_FLIGHT:
+    case ENGINE_STATE_UNPOWERED_FLIGHT:
+      //handleCurrentCommandActive();
+      break;
+    case ENGINE_STATE_ABORT:
+      //handleCurrentCommandAbort();
+      break;
+    default:
+      //engine.errorStatus.bits.invalidCommand = 1;
+      break;
+  }
+}
+
+void handleCurrentCommandIdle() {
+  uint8_t test = 0;
 }
 
 void sendTelemetryPacket(uint32_t timestamp_ms) {
@@ -431,7 +466,24 @@ void sendStatusPacket(uint32_t timestamp_ms) {
 }
 
 void getReceivedCommand() {
-  engine.telecommunication->receiveData((struct Telecommunication*)engine.telecommunication, currentCommand.data, sizeof(BoardCommand));
+  for (uint8_t i = 0; i < sizeof(uart_rx_buffer) - sizeof(currentCommand) - 1; i++) {
+    currentCommand.data[0] = uart_rx_buffer[i];
+    currentCommand.data[1] = uart_rx_buffer[i + 1];
+    currentCommand.data[2] = uart_rx_buffer[i + 2];
+    currentCommand.data[3] = uart_rx_buffer[i + 3];
+    if (currentCommand.fields.header.bits.type == BOARD_COMMAND_TYPE_CODE &&
+        currentCommand.fields.header.bits.boardId == TELEMETRY_ENGINE_BOARD_ID) {
+      for (uint8_t j = 4; j < sizeof(BoardCommand); j++) {
+        currentCommand.data[j] = uart_rx_buffer[i + j];
+        if (checkCommandCrc()) {
+          i += sizeof(BoardCommand) - 1;
+          handleCurrentCommand();
+          continue;
+        } 
+      }
+    }
+  }
+  /*engine.telecommunication->receiveData((struct Telecommunication*)engine.telecommunication, currentCommand.data, sizeof(BoardCommand));
   #ifdef USB_ENABLED
     if (engine.usb->status.bits.rxDataReady == 1) {
       // header
@@ -448,7 +500,7 @@ void getReceivedCommand() {
       
       engine.usb->status.bits.rxDataReady = 0;
     }
-  #endif
+  #endif*/
 }
 
 void filterTelemetryValues(uint8_t index) {
@@ -461,7 +513,7 @@ void filterTelemetryValues(uint8_t index) {
 }
 
 uint8_t checkCommandCrc() {
-  return 0;
+  return 1;
 }
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
@@ -475,5 +527,23 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
   if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST && engine.adc->status.bits.dmaFull == 0) {
     engine.adc->status.bits.dmaFull = 1;
     adcFullTimestamp_ms = HAL_GetTick();
+  }
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+  if (huart->Instance == USART1) {
+    // Process received data in uart_rx_buffer
+    // Example: Handle binary data directly
+    
+    getReceivedCommand();
+    // Restart UART reception for the next data
+    HAL_UART_Receive_DMA(huart, uart_rx_buffer, sizeof(uart_rx_buffer));
+  }
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+  if (huart->Instance == USART1) {
+    // Transmission complete callback
+    // Example: Prepare next data to send if needed
   }
 }
