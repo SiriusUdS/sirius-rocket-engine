@@ -26,7 +26,6 @@ static void initPWMs();
 static void initADC();
 static void initGPIOs();
 static void initUART();
-static void initUSB();
 
 static void initValves();
 static void initTemperatureSensors();
@@ -87,7 +86,7 @@ EngineTelemetryPacket telemetryPacket = {
   }
 };
 
-void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer) {
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
@@ -98,7 +97,6 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
   engine.adc    = adc;
   engine.gpios  = gpios;
   engine.uart   = uart;
-  engine.usb    = usb;
 
   engine.valves = valves;
   engine.temperatureSensors = temperatureSensors;
@@ -120,7 +118,6 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* u
   initPWMs();
   initGPIOs();
   initUART();
-  initUSB();
 }
 
 void Engine_tick(uint32_t timestamp_ms) {
@@ -252,15 +249,6 @@ void initUART() {
 
   engine.uart->init((struct UART*)engine.uart);
   HAL_UART_Receive_DMA(engine.uart->externalHandle, uart_rx_buffer, sizeof(uart_rx_buffer));
-}
-
-void initUSB() {
-  if (engine.usb->init == FUNCTION_NULL_POINTER) {
-    engine.usb->errorStatus.bits.nullFunctionPointer = 1;
-    return;
-  }
-
-  engine.usb->init((struct USB*)engine.usb);
 }
 
 void initValves() {
@@ -443,9 +431,6 @@ void sendTelemetryPacket(uint32_t timestamp_ms) {
   }
   telemetryPacket.fields.crc = 0;
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
-  #ifdef USB_ENABLED
-    engine.usb->transmit((struct USB*)engine.usb, telemetryPacket.data, sizeof(EngineTelemetryPacket));
-  #endif
 }
 
 void sendStatusPacket(uint32_t timestamp_ms) {
@@ -460,9 +445,6 @@ void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.crc = 0;
 
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
-  #ifdef USB_ENABLED
-    engine.usb->transmit((struct USB*)engine.usb, statusPacket.data, sizeof(EngineStatusPacket));
-  #endif
 }
 
 void getReceivedCommand() {
@@ -532,11 +514,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART1) {
-    // Process received data in uart_rx_buffer
-    // Example: Handle binary data directly
     
     getReceivedCommand();
-    // Restart UART reception for the next data
     HAL_UART_Receive_DMA(huart, uart_rx_buffer, sizeof(uart_rx_buffer));
   }
 }

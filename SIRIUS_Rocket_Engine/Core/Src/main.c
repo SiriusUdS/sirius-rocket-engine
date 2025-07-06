@@ -19,11 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "fatfs.h"
-#include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "usbd_cdc_if.h"
 #include "Engine.h"
 /* USER CODE END Includes */
 
@@ -65,7 +63,6 @@ GPIO gpios[ENGINE_GPIO_AMOUNT]        = {0};
 ADC12 adc                             = {0};
 PWM pwms[ENGINE_PWM_AMOUNT]           = {0};
 UART uart                             = {0};
-volatile USB usb                      = {0};
 
 Valve valves[ENGINE_VALVE_AMOUNT]                                = {0};
 Igniter igniters[ENGINE_IGNITER_AMOUNT] = {0};
@@ -95,7 +92,6 @@ static void setupGPIOs();
 static void setupPWMs();
 static void setupADC();
 static void setupUART();
-static void setupUSB();
 
 static void setupValves();
 static void setupIgniters();
@@ -144,7 +140,6 @@ int main(void)
   MX_ADC1_Init();
   MX_USART1_UART_Init();
   MX_TIM4_Init();
-  MX_USB_DEVICE_Init();
   MX_SDIO_SD_Init();
   MX_SPI2_Init();
   MX_FATFS_Init();
@@ -156,7 +151,6 @@ int main(void)
   setupPWMs();
   setupGPIOs();
   setupUART();
-  setupUSB();
 
   // Setup Sensors/Devices
   setupValves();
@@ -166,7 +160,7 @@ int main(void)
   setupTelecommunication();
   setupStorageDevices();
   
-  Engine_init(pwms, &adc, gpios, &uart, &usb, valves, temperatureSensors, telecomunication, storageDevices, &sdCardBuffer);
+  Engine_init(pwms, &adc, gpios, &uart, valves, temperatureSensors, telecomunication, storageDevices, &sdCardBuffer);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -890,13 +884,6 @@ void setupUART() {
   uart.errorStatus.bits.notInitialized = 1;
   uart.init = (UART_init)UARTHAL_init;
   uart.externalHandle = &huart1;
-}
-
-void setupUSB() {
-  usb.errorStatus.bits.notInitialized = 1;
-  usb.init = (USB_init)USBHAL_init;
-
-  usbCdc = &usb;
 }
 
 void setupValves() {

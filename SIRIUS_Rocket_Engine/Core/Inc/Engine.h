@@ -42,8 +42,6 @@
 
 #define FILTER_TELEMETRY_OFFSET (((sizeof(EngineSDCardBuffer) / 2)/sizeof(uint16_t)) / 64)
 
-#define USB_ENABLED
-
 typedef struct {
   EngineErrorStatus errorStatus;
   EngineStatus      status;
@@ -54,8 +52,6 @@ typedef struct {
   PWM*   pwms;
   GPIO*  gpios;
   UART*  uart;
-
-  volatile USB* usb;
 
   Valve* valves;
 
@@ -81,7 +77,7 @@ typedef struct {
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, volatile USB* usb, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer);
+extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer);
 
 extern void Engine_tick(uint32_t timestamp_ms);
 
