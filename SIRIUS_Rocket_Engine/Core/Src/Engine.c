@@ -60,14 +60,16 @@ EngineStatusPacket statusPacket = {
     .header = {
       .bits = {
         .type = STATUS_TYPE_CODE,
-        .boardId = TELEMETRY_ENGINE_BOARD_ID
+        .boardId = ENGINE_BOARD_ID
       }
     },
     .timestamp_ms = 0,
-    //.temperatureSensorErrorStatus = {0},
-    //.pressureSensorErrorStatus = {0},
-    //.engineErrorStatus = 0,
-    //.engineStatus = 0,
+    .errorStatus = {
+      .value = 0
+    },
+    .status = {
+      .value = 0
+    },
     .crc = 0
   }
 };
@@ -77,7 +79,7 @@ EngineTelemetryPacket telemetryPacket = {
     .header = {
       .bits = {
         .type = TELEMETRY_TYPE_CODE,
-        .boardId = TELEMETRY_ENGINE_BOARD_ID
+        .boardId = ENGINE_BOARD_ID
       }
     },
     .timestamp_ms = 0,
@@ -107,8 +109,6 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
 
   engine.sdCardBuffer = sdCardBuffer;
 
-  //adcTimestampIndex = 0;
-
   initValves();
   initTemperatureSensors();
   initTelecom();
@@ -130,8 +130,6 @@ void Engine_tick(uint32_t timestamp_ms) {
   handleTelecommunication(timestamp_ms);
 
   Engine_execute(timestamp_ms);
-  // TEST
-  //executeTest(timestamp_ms);
 }
 
 void Engine_execute(uint32_t timestamp_ms) {
@@ -454,7 +452,7 @@ void getReceivedCommand() {
     currentCommand.data[2] = uart_rx_buffer[i + 2];
     currentCommand.data[3] = uart_rx_buffer[i + 3];
     if (currentCommand.fields.header.bits.type == BOARD_COMMAND_TYPE_CODE &&
-        currentCommand.fields.header.bits.boardId == TELEMETRY_ENGINE_BOARD_ID) {
+        currentCommand.fields.header.bits.boardId == ENGINE_BOARD_ID) {
       for (uint8_t j = 4; j < sizeof(BoardCommand); j++) {
         currentCommand.data[j] = uart_rx_buffer[i + j];
         if (checkCommandCrc()) {
