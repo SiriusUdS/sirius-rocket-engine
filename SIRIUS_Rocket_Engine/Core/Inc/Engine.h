@@ -35,13 +35,16 @@
 
 #define FUNCTION_NULL_POINTER 0
 
-#define DATA_GATHERING_MODE_SLOW (uint8_t)0x00
-#define DATA_GATHERING_MODE_FAST (uint8_t)0x01
-
 #define TIME_BETWEEN_TELEMETRY_PACKETS_MS        (uint8_t)91
 #define TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS (uint8_t)5
 
 #define FILTER_TELEMETRY_OFFSET (((sizeof(EngineSDCardBuffer) / 2)/sizeof(uint16_t)) / 64)
+
+#define NOS_VALVE_OPEN_DUTY_CYCLE_PCT   (uint8_t)54
+#define NOS_VALVE_CLOSED_DUTY_CYCLE_PCT (uint8_t)26
+
+#define IPA_VALVE_OPEN_DUTY_CYCLE_PCT   (uint8_t)54
+#define IPA_VALVE_CLOSED_DUTY_CYCLE_PCT (uint8_t)26
 
 typedef struct {
   EngineErrorStatus errorStatus;
@@ -64,7 +67,7 @@ typedef struct {
   uint32_t           telecommunicationTimestampTarget_ms;
   uint8_t            telecommunicationTelemetryPacketCount;
 
-  uint8_t dataGatheringMode;
+  uint8_t isStoringData;
   uint32_t storageTimestampTarget_ms;
 
   Storage* storageDevices;

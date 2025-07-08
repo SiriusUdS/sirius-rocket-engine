@@ -93,7 +93,7 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
   
-  engine.dataGatheringMode = DATA_GATHERING_MODE_FAST;
+  engine.isStoringData = 0;
 
   engine.pwms   = pwms;
   engine.adc    = adc;
@@ -137,10 +137,10 @@ void Engine_execute(uint32_t timestamp_ms) {
     case ENGINE_STATE_INIT:
       executeInit(timestamp_ms);
       break;
-    case ENGINE_STATE_IDLE:
+    case ENGINE_STATE_SAFE:
       executeIdle(timestamp_ms);
       break;
-    case ENGINE_STATE_ARMING:
+    case ENGINE_STATE_UNSAFE:
       executeArming(timestamp_ms);
       break;
     case ENGINE_STATE_IGNITION:
@@ -166,7 +166,7 @@ void executeInit(uint32_t timestamp_ms) {
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
     engine.valves[i].close((struct Valve*)&engine.valves[i], timestamp_ms);
   }
-  engine.currentState = ENGINE_STATE_IDLE;
+  engine.currentState = ENGINE_STATE_SAFE;
 
   engine.telecommunication->config((struct Telecommunication*) engine.telecommunication);
 }
@@ -253,10 +253,14 @@ void initValves() {
   engine.valves[ENGINE_IPA_VALVE_INDEX].pwm = &engine.pwms[ENGINE_IPA_VALVE_PWM_INDEX];
   engine.valves[ENGINE_IPA_VALVE_INDEX].gpio[VALVE_GPIO_OPENED_INDEX] = &engine.gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX];
   engine.valves[ENGINE_IPA_VALVE_INDEX].gpio[VALVE_GPIO_CLOSED_INDEX] = &engine.gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX];
+  engine.valves[ENGINE_IPA_VALVE_INDEX].openDutyCycle_pct = IPA_VALVE_OPEN_DUTY_CYCLE_PCT;
+  engine.valves[ENGINE_IPA_VALVE_INDEX].closeDutyCycle_pct = IPA_VALVE_CLOSED_DUTY_CYCLE_PCT;
 
   engine.valves[ENGINE_NOS_VALVE_INDEX].pwm = &engine.pwms[ENGINE_NOS_VALVE_PWM_INDEX];
   engine.valves[ENGINE_NOS_VALVE_INDEX].gpio[VALVE_GPIO_OPENED_INDEX] = &engine.gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX];
   engine.valves[ENGINE_NOS_VALVE_INDEX].gpio[VALVE_GPIO_CLOSED_INDEX] = &engine.gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX];
+  engine.valves[ENGINE_NOS_VALVE_INDEX].openDutyCycle_pct = NOS_VALVE_OPEN_DUTY_CYCLE_PCT;
+  engine.valves[ENGINE_NOS_VALVE_INDEX].closeDutyCycle_pct = NOS_VALVE_CLOSED_DUTY_CYCLE_PCT;
 
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
     if (engine.valves[i].init == FUNCTION_NULL_POINTER) {
@@ -322,8 +326,8 @@ void tickTemperatureSensors() {
 }
 
 void handleDataStorage(uint32_t timestamp_ms) {
-  if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST) {
-    if (engine.adc->status.bits.dmaFull) {
+  if (engine.adc->status.bits.dmaFull) {
+    if (engine.isStoringData) {
       engine.sdCardBuffer->sdData[1].footer.timestamp_ms = adcFullTimestamp_ms;
       engine.sdCardBuffer->sdData[1].footer.status = engine.status.value;
       engine.sdCardBuffer->sdData[1].footer.errorStatus = engine.errorStatus.value;
@@ -346,10 +350,13 @@ void handleDataStorage(uint32_t timestamp_ms) {
 
       engine.sdCardBuffer->sdData[1].footer.crc = 0;
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex + (sizeof(EngineSDCardBuffer) / 2)), (sizeof(EngineSDCardBuffer) / 2));
-      engine.adc->status.bits.dmaFull = 0;
     }
+    
+    engine.adc->status.bits.dmaFull = 0;
+  }
   
-    if (engine.adc->status.bits.dmaHalfFull) {
+  if (engine.adc->status.bits.dmaHalfFull) {
+    if (engine.isStoringData) {
       engine.sdCardBuffer->sdData[0].footer.timestamp_ms = adcFullTimestamp_ms;
       engine.sdCardBuffer->sdData[0].footer.status = engine.status.value;
       engine.sdCardBuffer->sdData[0].footer.errorStatus = engine.errorStatus.value;
@@ -372,8 +379,9 @@ void handleDataStorage(uint32_t timestamp_ms) {
 
       engine.sdCardBuffer->sdData[0].footer.crc = 0;
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex), (sizeof(EngineSDCardBuffer) / 2));
-      engine.adc->status.bits.dmaHalfFull = 0;
     }
+    
+    engine.adc->status.bits.dmaHalfFull = 0;
   }
 }
 
@@ -395,11 +403,10 @@ void handleCurrentCommand() {
   switch (engine.currentState) {
     case ENGINE_STATE_INIT:
       break;
-    case ENGINE_STATE_IDLE:
-    case ENGINE_STATE_TESTING:
+    case ENGINE_STATE_SAFE:
       handleCurrentCommandIdle();
       break;
-    case ENGINE_STATE_ARMING:
+    case ENGINE_STATE_UNSAFE:
       //handleCurrentCommandArming();
       break;
     case ENGINE_STATE_IGNITION:
@@ -433,13 +440,10 @@ void sendTelemetryPacket(uint32_t timestamp_ms) {
 
 void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.timestamp_ms = timestamp_ms;
-  //statusPacket.fields.engineErrorStatus = engine.errorStatus.value;
-  //statusPacket.fields.engineStatus = engine.status.value;
-  //statusPacket.fields.pressureSensorErrorStatus[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_NOS_TANK_PRESSURE_SENSOR_INDEX].errorStatus.value;
-  //statusPacket.fields.pressureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX] = engine.pressureSensors[ENGINE_COMBUSTION_CHAMBER_PRESSURE_SENSOR_INDEX].errorStatus.value;
-  //statusPacket.fields.temperatureSensorErrorStatus[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX] = engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].errorStatus.value;
-  //statusPacket.fields.valvesStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status.value;
-  //statusPacket.fields.valvesStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status.value;
+  statusPacket.fields.errorStatus = engine.errorStatus;
+  statusPacket.fields.status = engine.status;
+  statusPacket.fields.valveStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status;
+  statusPacket.fields.valveStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status;
   statusPacket.fields.crc = 0;
 
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
@@ -458,29 +462,11 @@ void getReceivedCommand() {
         if (checkCommandCrc()) {
           i += sizeof(BoardCommand) - 1;
           handleCurrentCommand();
-          continue;
+          break;
         } 
       }
     }
   }
-  /*engine.telecommunication->receiveData((struct Telecommunication*)engine.telecommunication, currentCommand.data, sizeof(BoardCommand));
-  #ifdef USB_ENABLED
-    if (engine.usb->status.bits.rxDataReady == 1) {
-      // header
-      for (uint8_t i = 0; i < 4; i++) {
-        currentCommand.data[i] = engine.usb->rxBuffer[i];
-      }
-
-      if (currentCommand.fields.header.bits.type == TELEMETRY_TYPE_CODE &&
-          currentCommand.fields.header.bits.boardId == TELEMETRY_ENGINE_BOARD_ID) {
-        for (uint8_t i = 4; i < sizeof(BoardCommand); i++) {
-          currentCommand.data[i] = engine.usb->rxBuffer[i];
-        }
-      }
-      
-      engine.usb->status.bits.rxDataReady = 0;
-    }
-  #endif*/
 }
 
 void filterTelemetryValues(uint8_t index) {
@@ -489,7 +475,6 @@ void filterTelemetryValues(uint8_t index) {
     filteredValue += engine.sdCardBuffer->values[index + i*FILTER_TELEMETRY_OFFSET];
   }
   filteredTelemetryValues[index] = filteredValue >> 6;
-  //filteredTelemetryValues[index] = engine.dmaAdcBuffer->values[index];
 }
 
 uint8_t checkCommandCrc() {
@@ -504,7 +489,7 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
-  if (engine.dataGatheringMode == DATA_GATHERING_MODE_FAST && engine.adc->status.bits.dmaFull == 0) {
+  if (engine.adc->status.bits.dmaFull == 0) {
     engine.adc->status.bits.dmaFull = 1;
     adcFullTimestamp_ms = HAL_GetTick();
   }
