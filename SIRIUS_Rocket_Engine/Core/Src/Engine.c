@@ -88,7 +88,7 @@ EngineTelemetryPacket telemetryPacket = {
   }
 };
 
-void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer) {
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
@@ -103,6 +103,8 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
   engine.valves = valves;
   engine.temperatureSensors = temperatureSensors;
   engine.telecommunication = telecom;
+
+  engine.hcrc = hcrc;
 
   engine.storageDevices = storageDevices;
   engine.sdCardBufferPosition = 0;
@@ -335,7 +337,6 @@ void handleDataStorage(uint32_t timestamp_ms) {
       engine.sdCardBuffer->sdData[1].footer.valveStatus[1] = engine.valves[1].status.value;
       engine.sdCardBuffer->sdData[1].footer.valveErrorStatus[0] = engine.valves[0].errorStatus.value;
       engine.sdCardBuffer->sdData[1].footer.valveErrorStatus[1] = engine.valves[1].errorStatus.value;
-      // Those are the BoardCommand
       engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
       engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
       engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
@@ -348,7 +349,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
         engine.sdCardBuffer->sdData[1].footer.signature[i] = 0;
       }
 
-      engine.sdCardBuffer->sdData[1].footer.crc = 0;
+      engine.sdCardBuffer->sdData[1].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[1].data, sizeof(EngineSDFormattedData) -  sizeof(uint32_t));
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex + (sizeof(EngineSDCardBuffer) / 2)), (sizeof(EngineSDCardBuffer) / 2));
     }
     
@@ -377,7 +378,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
         engine.sdCardBuffer->sdData[0].footer.signature[i] = 0;
       }
 
-      engine.sdCardBuffer->sdData[0].footer.crc = 0;
+      engine.sdCardBuffer->sdData[0].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[0].data, sizeof(EngineSDFormattedData) -  sizeof(uint32_t));
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex), (sizeof(EngineSDCardBuffer) / 2));
     }
     
@@ -434,7 +435,7 @@ void sendTelemetryPacket(uint32_t timestamp_ms) {
     filterTelemetryValues(i);
     telemetryPacket.fields.adcValues[i] = filteredTelemetryValues[i];
   }
-  telemetryPacket.fields.crc = 0;
+  telemetryPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)telemetryPacket.data, sizeof(EngineTelemetryPacket) - sizeof(uint32_t));
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
 }
 
@@ -444,7 +445,7 @@ void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.status = engine.status;
   statusPacket.fields.valveStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status;
   statusPacket.fields.valveStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status;
-  statusPacket.fields.crc = 0;
+  statusPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)statusPacket.data, sizeof(EngineStatusPacket) - sizeof(uint32_t));
 
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
 }
@@ -478,6 +479,9 @@ void filterTelemetryValues(uint8_t index) {
 }
 
 uint8_t checkCommandCrc() {
+  if (currentCommand.fields.crc != HAL_CRC_Calculate(engine.hcrc, (uint32_t*)currentCommand.data, sizeof(BoardCommand) - sizeof(uint32_t))) {
+    return 0;
+  }
   return 1;
 }
 
@@ -500,12 +504,5 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     
     getReceivedCommand();
     HAL_UART_Receive_DMA(huart, uart_rx_buffer, sizeof(uart_rx_buffer));
-  }
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
-  if (huart->Instance == USART1) {
-    // Transmission complete callback
-    // Example: Prepare next data to send if needed
   }
 }

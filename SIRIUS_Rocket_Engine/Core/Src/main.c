@@ -160,7 +160,7 @@ int main(void)
   setupTelecommunication();
   setupStorageDevices();
   
-  Engine_init(pwms, &adc, gpios, &uart, valves, temperatureSensors, telecomunication, storageDevices, &sdCardBuffer);
+  Engine_init(pwms, &adc, gpios, &uart, valves, temperatureSensors, telecomunication, storageDevices, &sdCardBuffer, &hcrc);
   /* USER CODE END 2 */
 
   /* Infinite loop */

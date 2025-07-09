@@ -67,6 +67,8 @@ typedef struct {
   uint32_t           telecommunicationTimestampTarget_ms;
   uint8_t            telecommunicationTelemetryPacketCount;
 
+  CRC_HandleTypeDef* hcrc;
+
   uint8_t isStoringData;
   uint32_t storageTimestampTarget_ms;
 
@@ -81,7 +83,7 @@ typedef struct {
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer);
+extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc);
 
 extern void Engine_tick(uint32_t timestamp_ms);
 
