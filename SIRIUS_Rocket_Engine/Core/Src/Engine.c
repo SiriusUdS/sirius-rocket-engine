@@ -14,10 +14,9 @@ uint8_t uart_rx_buffer[132] = {0};
 uint8_t uart_tx_buffer[44] = {0};
 
 static void executeInit(uint32_t timestamp_ms);
-static void executeIdle(uint32_t timestamp_ms);
+static void executeSafe(uint32_t timestamp_ms);
+static void executeUnsafe(uint32_t timestamp_ms);
 static void executeAbort(uint32_t timestamp_ms);
-static void executeTest(uint32_t timestamp_ms);
-static void executeArming(uint32_t timestamp_ms);
 static void executeIgnition(uint32_t timestamp_ms);
 static void executePoweredFlight(uint32_t timestamp_ms);
 static void executeUnpoweredFlight(uint32_t timestamp_ms);
@@ -38,10 +37,12 @@ static void tickTemperatureSensors();
 
 static void handleDataStorage(uint32_t timestamp_ms);
 static void handleTelecommunication(uint32_t timestamp_ms);
+
 static void handleCurrentCommand();
-static void handleCurrentCommandIdle();
-static void handleCurrentCommandArming();
-static void handleCurrentCommandActive();
+static void handleCurrentCommandSafe();
+static void handleCurrentCommandUnsafe();
+static void handleCurrentCommandIgnite();
+static void handleCurrentCommandLaunch();
 static void handleCurrentCommandAbort();
 
 static void filterTelemetryValues(uint8_t index);
@@ -148,12 +149,8 @@ void Engine_execute(uint32_t timestamp_ms) {
     case ENGINE_STATE_IGNITION:
       executeIgnition(timestamp_ms);
       break;
-    case ENGINE_STATE_POWERED_FLIGHT:
+    case ENGINE_STATE_LAUNCH:
       executePoweredFlight(timestamp_ms);
-      break;
-    case ENGINE_STATE_UNPOWERED_FLIGHT:
-      executeUnpoweredFlight(timestamp_ms);
-      break;
     case ENGINE_STATE_ABORT:
       executeAbort(timestamp_ms);
       break;
@@ -349,7 +346,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
         engine.sdCardBuffer->sdData[1].footer.signature[i] = 0;
       }
 
-      engine.sdCardBuffer->sdData[1].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[1].data, (sizeof(EngineSDFormattedData) -  sizeof(uint32_t)) - 1);
+      engine.sdCardBuffer->sdData[1].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[1].data, (sizeof(EngineSDFormattedData) -  sizeof(uint32_t)));
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex + (sizeof(EngineSDCardBuffer) / 2)), (sizeof(EngineSDCardBuffer) / 2));
     }
     
@@ -378,7 +375,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
         engine.sdCardBuffer->sdData[0].footer.signature[i] = 0;
       }
 
-      engine.sdCardBuffer->sdData[0].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[0].data, (sizeof(EngineSDFormattedData) -  sizeof(uint32_t)) - 1);
+      engine.sdCardBuffer->sdData[0].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[0].data, (sizeof(EngineSDFormattedData) -  sizeof(uint32_t)));
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex), (sizeof(EngineSDCardBuffer) / 2));
     }
     
@@ -405,16 +402,13 @@ void handleCurrentCommand() {
     case ENGINE_STATE_INIT:
       break;
     case ENGINE_STATE_SAFE:
-      handleCurrentCommandIdle();
+      handleCurrentCommandSafe();
       break;
     case ENGINE_STATE_UNSAFE:
-      //handleCurrentCommandArming();
+      handleCurrentCommandUnsafe();
       break;
     case ENGINE_STATE_IGNITION:
     case ENGINE_STATE_LAUNCH:
-    case ENGINE_STATE_POWERED_FLIGHT:
-    case ENGINE_STATE_UNPOWERED_FLIGHT:
-      //handleCurrentCommandActive();
       break;
     case ENGINE_STATE_ABORT:
       //handleCurrentCommandAbort();
@@ -425,7 +419,11 @@ void handleCurrentCommand() {
   }
 }
 
-void handleCurrentCommandIdle() {
+void handleCurrentCommandSafe() {
+  uint8_t test = 0;
+}
+
+void handleCurrentCommandUnsafe() {
   uint8_t test = 0;
 }
 
@@ -435,7 +433,7 @@ void sendTelemetryPacket(uint32_t timestamp_ms) {
     filterTelemetryValues(i);
     telemetryPacket.fields.adcValues[i] = filteredTelemetryValues[i];
   }
-  telemetryPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)telemetryPacket.data, (sizeof(EngineTelemetryPacket) - sizeof(uint32_t)) - 1);
+  telemetryPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)telemetryPacket.data, (sizeof(EngineTelemetryPacket) - sizeof(uint32_t)));
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
 }
 
@@ -445,7 +443,7 @@ void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.status = engine.status;
   statusPacket.fields.valveStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status;
   statusPacket.fields.valveStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status;
-  statusPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)statusPacket.data, (sizeof(EngineStatusPacket) - sizeof(uint32_t)) - 1);
+  statusPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)statusPacket.data, (sizeof(EngineStatusPacket) - sizeof(uint32_t)));
 
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
 }
@@ -479,7 +477,7 @@ void filterTelemetryValues(uint8_t index) {
 }
 
 uint8_t checkCommandCrc() {
-  if (currentCommand.fields.crc != HAL_CRC_Calculate(engine.hcrc, (uint32_t*)currentCommand.data, (sizeof(BoardCommand) - sizeof(uint32_t)) - 1)) {
+  if (currentCommand.fields.crc != HAL_CRC_Calculate(engine.hcrc, (uint32_t*)currentCommand.data, (sizeof(BoardCommand) - sizeof(uint32_t)))) {
     return 0;
   }
   return 1;
