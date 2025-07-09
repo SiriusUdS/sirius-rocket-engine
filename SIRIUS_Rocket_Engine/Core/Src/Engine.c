@@ -420,11 +420,28 @@ void handleCurrentCommand() {
 }
 
 void handleCurrentCommandSafe() {
-  uint8_t test = 0;
+  // CHECK FOR ABORT COMMAND FIRST
+  if (currentCommand.fields.header.bits.commandCode == BOARD_COMMAND_CODE_UNSAFE) {
+    engine.currentState = ENGINE_STATE_UNSAFE;
+  }
 }
 
 void handleCurrentCommandUnsafe() {
-  uint8_t test = 0;
+  // HANDLE SAFE COMMAND -- MAKE ABORT GO FIRST
+  if (currentCommand.fields.header.bits.commandCode == ENGINE_COMMAND_CODE_FIRE_IGNITER) {
+    //handleCurrentCommandIgnite();
+    uint8_t test = 0;
+  }
+  else if (currentCommand.fields.header.bits.commandCode == ENGINE_COMMAND_CODE_OPEN_VALVE) {
+    //handleCurrentCommandLaunch();
+    uint8_t test = 0;
+  }
+  else if (currentCommand.fields.header.bits.commandCode == BOARD_COMMAND_CODE_ABORT) {
+    //handleCurrentCommandAbort();
+  }
+  else {
+    //engine.errorStatus.bits.invalidCommand = 1;
+  }
 }
 
 void sendTelemetryPacket(uint32_t timestamp_ms) {
@@ -454,8 +471,9 @@ void getReceivedCommand() {
     currentCommand.data[1] = uart_rx_buffer[i + 1];
     currentCommand.data[2] = uart_rx_buffer[i + 2];
     currentCommand.data[3] = uart_rx_buffer[i + 3];
-    if (currentCommand.fields.header.bits.type == BOARD_COMMAND_TYPE_CODE &&
-        currentCommand.fields.header.bits.boardId == ENGINE_BOARD_ID) {
+    if (currentCommand.fields.header.bits.type == BOARD_COMMAND_BROADCAST_TYPE_CODE || 
+        (currentCommand.fields.header.bits.type == BOARD_COMMAND_UNICAST_TYPE_CODE &&
+        currentCommand.fields.header.bits.boardId == ENGINE_BOARD_ID)) {
       for (uint8_t j = 4; j < sizeof(BoardCommand); j++) {
         currentCommand.data[j] = uart_rx_buffer[i + j];
         if (checkCommandCrc()) {
