@@ -10,6 +10,8 @@
 
 #include "../sirius-embedded-common/Inc/Device/Igniter/EstesC6.h"
 
+#include "../sirius-embedded-common/Inc/Device/Heater/FTVOGUEanpih0ztre.h"
+
 #include "../sirius-embedded-common/Inc/Device/Storage/SDCard.h"
 #include "../sirius-embedded-common/Inc/Device/Storage/ExternalFlash.h"
 
@@ -30,21 +32,22 @@
 #include "../sirius-embedded-common/sirius-headers-common/Telecommunication/BoardCommand.h"
 #include "../sirius-embedded-common/Inc/Device/Telecommunication/XBEE.h"
 #include "../sirius-embedded-common/sirius-headers-common/Telecommunication/PacketHeaderVariable.h"
+#include "../sirius-embedded-common/sirius-headers-common/Telecommunication/CommandResponse.h"
 
 #include "stm32f4xx_hal.h"
 
 #define FUNCTION_NULL_POINTER 0
 
-#define TIME_BETWEEN_TELEMETRY_PACKETS_MS        (uint8_t)91
-#define TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS (uint8_t)5
+#define TIME_BETWEEN_TELEMETRY_PACKETS_MS        (uint16_t)91
+#define TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS (uint16_t)5
 
 #define FILTER_TELEMETRY_OFFSET (((sizeof(EngineSDCardBuffer) / 2)/sizeof(uint16_t)) / 64)
 
-#define NOS_VALVE_OPEN_DUTY_CYCLE_PCT   (uint8_t)54
-#define NOS_VALVE_CLOSED_DUTY_CYCLE_PCT (uint8_t)26
+#define NOS_VALVE_OPEN_DUTY_CYCLE_PCT   (uint16_t)26
+#define NOS_VALVE_CLOSED_DUTY_CYCLE_PCT (uint16_t)54
 
-#define IPA_VALVE_OPEN_DUTY_CYCLE_PCT   (uint8_t)54
-#define IPA_VALVE_CLOSED_DUTY_CYCLE_PCT (uint8_t)26
+#define IPA_VALVE_OPEN_DUTY_CYCLE_PCT   (uint16_t)60
+#define IPA_VALVE_CLOSED_DUTY_CYCLE_PCT (uint16_t)20
 
 typedef struct {
   EngineErrorStatus errorStatus;
@@ -58,6 +61,8 @@ typedef struct {
   UART*  uart;
 
   Valve* valves;
+  Igniter* igniter;
+  Heater* heaters;
 
   TemperatureSensor* temperatureSensors;
 
@@ -83,7 +88,7 @@ typedef struct {
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc);
+extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, Heater* heaters, Igniter* igniter, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc);
 
 extern void Engine_tick(uint32_t timestamp_ms);
 

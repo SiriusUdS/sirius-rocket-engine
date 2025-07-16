@@ -40,6 +40,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/sirius-embedded-common/Src/Device/Telecommunication/Telecommunication.c
     ../../Core/sirius-embedded-common/Src/Device/Telecommunication/XBEE.c
     ../../Core/sirius-embedded-common/Src/Device/Igniter/EstesC6.c
+    ../../Core/sirius-embedded-common/Src/Device/Heater/FTVOGUEanpih0ztre.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12Channel.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12ChannelHAL.c
     ../../Core/sirius-embedded-common/Src/LowLevelDriver/ADC/ADC12.c
@@ -89,6 +90,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_sd.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_crc.c
+    ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_iwdg.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_sdmmc.c
     ../../Core/Src/system_stm32f4xx.c
     ../../Core/Src/sysmem.c

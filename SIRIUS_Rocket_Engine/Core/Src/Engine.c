@@ -8,25 +8,35 @@ uint32_t adcFullTimestamp_ms = 0;
 uint16_t telemetryTimestampBufferIndex = 0;
 uint16_t telemetryBufferIndex = 0;
 
+uint32_t timeSinceLastCommand_ms = 0;
+uint32_t lastCommandTimestamp_ms = 0;
+
+uint8_t activateStorageFlag = 0;
+
 uint16_t filteredTelemetryValues[16] = {0};
 
-uint8_t uart_rx_buffer[132] = {0};
-uint8_t uart_tx_buffer[44] = {0};
+uint8_t uartRxBuffer[220] = {0};
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeSafe(uint32_t timestamp_ms);
 static void executeUnsafe(uint32_t timestamp_ms);
 static void executeAbort(uint32_t timestamp_ms);
 static void executeIgnition(uint32_t timestamp_ms);
-static void executePoweredFlight(uint32_t timestamp_ms);
-static void executeUnpoweredFlight(uint32_t timestamp_ms);
+static void executeLaunch(uint32_t timestamp_ms);
+
+static void executeAbortCommand(uint32_t timestamp_ms);
+static void executeIgnitionCommand(uint32_t timestamp_ms);
+static void executeLaunchCommand(uint32_t timestamp_ms);
+
 
 static void initPWMs();
 static void initADC();
 static void initGPIOs();
 static void initUART();
 
+static void initHeaters();
 static void initValves();
+static void initIgniter();
 static void initTemperatureSensors();
 static void initTelecom();
 
@@ -40,6 +50,7 @@ static void handleTelecommunication(uint32_t timestamp_ms);
 
 static void handleCurrentCommand();
 static void handleCurrentCommandSafe();
+static void handleCommandAcknowledge();
 static void handleCurrentCommandUnsafe();
 static void handleCurrentCommandIgnite();
 static void handleCurrentCommandLaunch();
@@ -49,7 +60,6 @@ static void filterTelemetryValues(uint8_t index);
 
 static void sendTelemetryPacket(uint32_t timestamp_ms);
 static void sendStatusPacket(uint32_t timestamp_ms);
-static uint32_t computeCrc(uint8_t* data, uint16_t size);
 
 static void getReceivedCommand();
 static uint8_t checkCommandCrc();
@@ -65,12 +75,9 @@ EngineStatusPacket statusPacket = {
       }
     },
     .timestamp_ms = 0,
-    .errorStatus = {
-      .value = 0
-    },
-    .status = {
-      .value = 0
-    },
+    .errorStatus = {0},
+    .status = {0},
+    .valveStatus = {0},
     .crc = 0
   }
 };
@@ -89,7 +96,7 @@ EngineTelemetryPacket telemetryPacket = {
   }
 };
 
-void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc) {
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, Heater* heaters, Igniter* igniter, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
@@ -102,6 +109,8 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
   engine.uart   = uart;
 
   engine.valves = valves;
+  engine.igniter = igniter;
+  engine.heaters = heaters;
   engine.temperatureSensors = temperatureSensors;
   engine.telecommunication = telecom;
 
@@ -113,6 +122,8 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
   engine.sdCardBuffer = sdCardBuffer;
 
   initValves();
+  initIgniter();
+  initHeaters();
   initTemperatureSensors();
   initTelecom();
 
@@ -124,10 +135,15 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
 }
 
 void Engine_tick(uint32_t timestamp_ms) {
+  timeSinceLastCommand_ms = timestamp_ms - lastCommandTimestamp_ms;
+  if (engine.currentState != ENGINE_STATE_ABORT && timeSinceLastCommand_ms > 30000) {
+    engine.currentState = ENGINE_STATE_ABORT;
+  }
   tickTemperatureSensors(timestamp_ms);
   tickValves(timestamp_ms);
   engine.telecommunication->tick((struct Telecommunication*)engine.telecommunication, timestamp_ms);
   engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].tick((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], timestamp_ms);
+  engine.igniter->tick((struct Igniter*)engine.igniter, timestamp_ms);
 
   handleDataStorage(timestamp_ms);
   handleTelecommunication(timestamp_ms);
@@ -141,22 +157,23 @@ void Engine_execute(uint32_t timestamp_ms) {
       executeInit(timestamp_ms);
       break;
     case ENGINE_STATE_SAFE:
-      executeIdle(timestamp_ms);
+      executeSafe(timestamp_ms);
       break;
     case ENGINE_STATE_UNSAFE:
-      executeArming(timestamp_ms);
+      executeUnsafe(timestamp_ms);
       break;
     case ENGINE_STATE_IGNITION:
       executeIgnition(timestamp_ms);
       break;
     case ENGINE_STATE_LAUNCH:
-      executePoweredFlight(timestamp_ms);
+      executeLaunch(timestamp_ms);
+      break;
     case ENGINE_STATE_ABORT:
       executeAbort(timestamp_ms);
       break;
     default:
       engine.errorStatus.bits.invalidState = 1;
-      executeIdle(timestamp_ms);
+      executeSafe(timestamp_ms);
       break;
   }
 }
@@ -170,32 +187,44 @@ void executeInit(uint32_t timestamp_ms) {
   engine.telecommunication->config((struct Telecommunication*) engine.telecommunication);
 }
 
-void executeIdle(uint32_t timestamp_ms) {
-  uint8_t test = 0;
+void executeSafe(uint32_t timestamp_ms) {
+  activateStorageFlag = 0;
 }
 
-void executeAbort(uint32_t timestamp_ms) {
-  // Check flowcharts for wtf to do
-}
+void executeUnsafe(uint32_t timestamp_ms) {
 
-void executeArming(uint32_t timestamp_ms) {
-  // Wait for ignition command, completely armed
 }
 
 void executeIgnition(uint32_t timestamp_ms) {
+
+}
+
+void executeLaunch(uint32_t timestamp_ms) {
+
+}
+
+void executeAbort(uint32_t timestamp_ms) {
+  activateStorageFlag = 0;
+}
+
+void executeAbortCommand(uint32_t timestamp_ms) {
+  engine.valves[ENGINE_NOS_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_NOS_VALVE_INDEX], timestamp_ms);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
+  engine.currentState = ENGINE_STATE_ABORT;
+}
+
+void executeIgnitionCommand(uint32_t timestamp_ms) {
+  engine.igniter->ignite((struct Igniter*)engine.igniter, timestamp_ms);
+  statusPacket.fields.igniteTimestamp_ms = timestamp_ms;
+  activateStorageFlag = 1;
+}
+
+void executeLaunchCommand(uint32_t timestamp_ms) {
+  engine.valves[ENGINE_NOS_VALVE_INDEX].open((struct Valve*)&engine.valves[ENGINE_NOS_VALVE_INDEX], timestamp_ms);
   engine.valves[ENGINE_IPA_VALVE_INDEX].open((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
-}
-
-void executePoweredFlight(uint32_t timestamp_ms) {
-  // save as much data as possible
-}
-
-void executeUnpoweredFlight(uint32_t timestamp_ms) {
-  // stay mostly idle
-}
-
-void executeTest(uint32_t timestamp_ms) {
-  
+  engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad->setDutyCycle_pct((struct Heater*)engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad, 0);
+  engine.valves[ENGINE_IPA_VALVE_INDEX].heatpad->setDutyCycle_pct((struct Heater*)engine.valves[ENGINE_IPA_VALVE_INDEX].heatpad, 0);
+  statusPacket.fields.launchTimestamp_ms = timestamp_ms;
 }
 
 void initPWMs() {
@@ -245,19 +274,21 @@ void initUART() {
   }
 
   engine.uart->init((struct UART*)engine.uart);
-  HAL_UART_Receive_DMA(engine.uart->externalHandle, uart_rx_buffer, sizeof(uart_rx_buffer));
+  HAL_UART_Receive_DMA(engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
 }
 
 void initValves() {
   engine.valves[ENGINE_IPA_VALVE_INDEX].pwm = &engine.pwms[ENGINE_IPA_VALVE_PWM_INDEX];
   engine.valves[ENGINE_IPA_VALVE_INDEX].gpio[VALVE_GPIO_OPENED_INDEX] = &engine.gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX];
   engine.valves[ENGINE_IPA_VALVE_INDEX].gpio[VALVE_GPIO_CLOSED_INDEX] = &engine.gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX];
+  engine.valves[ENGINE_IPA_VALVE_INDEX].heatpad = &engine.heaters[ENGINE_IPA_HEATPAD_INDEX];
   engine.valves[ENGINE_IPA_VALVE_INDEX].openDutyCycle_pct = IPA_VALVE_OPEN_DUTY_CYCLE_PCT;
   engine.valves[ENGINE_IPA_VALVE_INDEX].closeDutyCycle_pct = IPA_VALVE_CLOSED_DUTY_CYCLE_PCT;
 
   engine.valves[ENGINE_NOS_VALVE_INDEX].pwm = &engine.pwms[ENGINE_NOS_VALVE_PWM_INDEX];
   engine.valves[ENGINE_NOS_VALVE_INDEX].gpio[VALVE_GPIO_OPENED_INDEX] = &engine.gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX];
   engine.valves[ENGINE_NOS_VALVE_INDEX].gpio[VALVE_GPIO_CLOSED_INDEX] = &engine.gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX];
+  engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad = &engine.heaters[ENGINE_NOS_HEATPAD_INDEX];
   engine.valves[ENGINE_NOS_VALVE_INDEX].openDutyCycle_pct = NOS_VALVE_OPEN_DUTY_CYCLE_PCT;
   engine.valves[ENGINE_NOS_VALVE_INDEX].closeDutyCycle_pct = NOS_VALVE_CLOSED_DUTY_CYCLE_PCT;
 
@@ -272,14 +303,14 @@ void initValves() {
 }
 
 void initTemperatureSensors() {
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_1_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_2_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_3_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_3_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_4_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_4_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_5_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_5_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_6_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_6_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_7_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_7_THERMISTANCE_ADC_CHANNEL_INDEX];
-  engine.temperatureSensors[ENGINE_COMBUSTION_CHAMBER_8_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_COMBUSTION_CHAMBER_8_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_IPA_MAIN_VALVE_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_IPA_MAIN_VALVE_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_NOS_MAIN_VALVE_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_NOS_MAIN_VALVE_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_THROAT_1_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_THROAT_1_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_THROAT_2_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_THROAT_2_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_THROAT_3_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_THROAT_3_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_NOZZLE_1_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_NOZZLE_1_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_NOZZLE_2_THERMISTANCE_INDEX].adcChannel = &engine.adc->channels[ENGINE_NOZZLE_2_THERMISTANCE_ADC_CHANNEL_INDEX];
+  engine.temperatureSensors[ENGINE_THERMISTANCE_8_INDEX].adcChannel = &engine.adc->channels[ENGINE_THERMISTANCE_8_ADC_CHANNEL_INDEX];
 
   for (uint8_t i = 0; i < ENGINE_TEMPERATURE_SENSOR_AMOUNT; i++) {
     if (engine.temperatureSensors[i].init == FUNCTION_NULL_POINTER) {
@@ -312,6 +343,34 @@ void initStorageDevices() {
   }
 }
 
+void initIgniter() {
+  engine.igniter->gpio = &engine.gpios[ENGINE_IGNITER_1_GPIO_INDEX];
+  if (engine.igniter->init == FUNCTION_NULL_POINTER) {
+    engine.igniter->errorStatus.bits.nullFunctionPointer = 1;
+    return;
+  }
+
+  engine.igniter->igniteDuration_ms = 3500;
+  engine.igniter->init((struct Igniter*)engine.igniter);
+}
+
+void initHeaters() {
+  engine.heaters[ENGINE_NOS_HEATPAD_INDEX].gpio = &engine.gpios[ENGINE_NOS_HEATPAD_GPIO_INDEX];
+  engine.heaters[ENGINE_IPA_HEATPAD_INDEX].gpio = &engine.gpios[ENGINE_IPA_HEATPAD_GPIO_INDEX];
+
+  for (uint8_t i = 0; i < ENGINE_HEATPAD_AMOUNT; i++) {
+    if (engine.heaters[i].init == FUNCTION_NULL_POINTER) {
+      engine.heaters[i].errorStatus.bits.nullFunctionPointer = 1;
+      continue;
+    }
+
+    engine.heaters[i].init((struct Heater*)&engine.heaters[i]);
+    engine.heaters[i].period_s = 10;
+    engine.heaters[i].lastSwitchTimestamp_ms = 0;
+    engine.heaters[i].setDutyCycle_pct((struct Heater*)&engine.heaters[i], 0);
+  }
+}
+
 void tickValves(uint32_t timestamp_ms) {
   for (uint8_t i = 0; i < ENGINE_VALVE_AMOUNT; i++) {
     engine.valves[i].tick((struct Valve*)&engine.valves[i], timestamp_ms);
@@ -324,6 +383,7 @@ void tickTemperatureSensors() {
   }
 }
 
+// REFACTOR THIS IS SUCKS DICK (the footer union and this code)
 void handleDataStorage(uint32_t timestamp_ms) {
   if (engine.adc->status.bits.dmaFull) {
     if (engine.isStoringData) {
@@ -346,7 +406,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
         engine.sdCardBuffer->sdData[1].footer.signature[i] = 0;
       }
 
-      engine.sdCardBuffer->sdData[1].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[1].data, (sizeof(EngineSDFormattedData) / sizeof(uint32_t)) -  sizeof(uint32_t));
+      engine.sdCardBuffer->sdData[1].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[1], (sizeof(EngineSDFormattedData) / sizeof(uint32_t)) -  sizeof(uint8_t));
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex + (sizeof(EngineSDCardBuffer) / 2)), (sizeof(EngineSDCardBuffer) / 2));
     }
     
@@ -375,7 +435,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
         engine.sdCardBuffer->sdData[0].footer.signature[i] = 0;
       }
 
-      engine.sdCardBuffer->sdData[0].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[0].data, (sizeof(EngineSDFormattedData) / sizeof(uint32_t)) -  sizeof(uint32_t));
+      engine.sdCardBuffer->sdData[0].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[0], (sizeof(EngineSDFormattedData) / sizeof(uint32_t)) -  sizeof(uint8_t));
       engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].store((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], STORAGE_DATA_FAST_DESTINATION, (uint8_t*)(engine.sdCardBuffer->hex), (sizeof(EngineSDCardBuffer) / 2));
     }
     
@@ -398,6 +458,17 @@ void handleTelecommunication(uint32_t timestamp_ms) {
 }
 
 void handleCurrentCommand() {
+  switch (currentCommand.fields.header.bits.commandCode) {
+    case BOARD_COMMAND_CODE_ABORT:
+      executeAbortCommand(HAL_GetTick());
+      break;
+    case BOARD_COMMAND_CODE_ACK:
+      handleCommandAcknowledge();
+      break;
+    default:
+      break;
+  }
+
   switch (engine.currentState) {
     case ENGINE_STATE_INIT:
       break;
@@ -408,39 +479,116 @@ void handleCurrentCommand() {
       handleCurrentCommandUnsafe();
       break;
     case ENGINE_STATE_IGNITION:
+      handleCurrentCommandIgnite();
+      break;
     case ENGINE_STATE_LAUNCH:
+      handleCurrentCommandLaunch();
       break;
     case ENGINE_STATE_ABORT:
-      //handleCurrentCommandAbort();
+      handleCurrentCommandAbort();
       break;
     default:
-      //engine.errorStatus.bits.invalidCommand = 1;
       break;
   }
 }
 
+void handleCurrentCommandAbort() {
+  if (currentCommand.fields.header.bits.commandCode == BOARD_COMMAND_CODE_RESET) {
+    engine.currentState = ENGINE_STATE_SAFE;
+  }
+}
+
+void handleCommandAcknowledge() {
+   CommandResponse commandResponse = {
+    .fields = {
+      .header = {
+        .bits = {
+          .type = COMMAND_RESPONSE_TYPE_CODE,
+          .boardId = ENGINE_BOARD_ID,
+          .commandIndex = 0,
+          .response = RESPONSE_CODE_OK
+        }
+      },
+      .crc = 0
+    }
+  };
+
+  commandResponse.fields.crc = HAL_CRC_Calculate((CRC_HandleTypeDef*)engine.hcrc, commandResponse.data32, (sizeof(CommandResponse) / sizeof(uint32_t)) - sizeof(uint8_t));
+
+  HAL_UART_Transmit_DMA(engine.uart->externalHandle, commandResponse.data, sizeof(CommandResponse));
+}
+
 void handleCurrentCommandSafe() {
-  // CHECK FOR ABORT COMMAND FIRST
-  if (currentCommand.fields.header.bits.commandCode == BOARD_COMMAND_CODE_UNSAFE) {
-    engine.currentState = ENGINE_STATE_UNSAFE;
+  switch (currentCommand.fields.header.bits.commandCode) {
+    case BOARD_COMMAND_CODE_UNSAFE:
+      engine.currentState = ENGINE_STATE_UNSAFE;
+      break;
+    case ENGINE_COMMAND_CODE_SET_IPA_VALVE_HEATER_POWER_PCT:
+      if (currentCommand.fields.value <= 100) {
+        engine.valves[ENGINE_IPA_VALVE_INDEX].heatpad->setDutyCycle_pct((struct Heater*)engine.valves[ENGINE_IPA_VALVE_INDEX].heatpad, currentCommand.fields.value);
+      }
+      break;
+    case ENGINE_COMMAND_CODE_SET_NOS_VALVE_HEATER_POWER_PCT:
+      if (currentCommand.fields.value <= 100) {
+        engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad->setDutyCycle_pct((struct Heater*)engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad, currentCommand.fields.value);
+      }
+      break;
+    default:
+      break;
   }
 }
 
 void handleCurrentCommandUnsafe() {
-  // HANDLE SAFE COMMAND -- MAKE ABORT GO FIRST
-  if (currentCommand.fields.header.bits.commandCode == ENGINE_COMMAND_CODE_FIRE_IGNITER) {
-    //handleCurrentCommandIgnite();
-    uint8_t test = 0;
+  switch (currentCommand.fields.header.bits.commandCode) {
+    case BOARD_COMMAND_CODE_SAFE:
+      engine.valves[ENGINE_NOS_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_NOS_VALVE_INDEX], HAL_GetTick());
+      engine.valves[ENGINE_IPA_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], HAL_GetTick());
+      engine.currentState = ENGINE_STATE_SAFE;
+      break;
+    case ENGINE_COMMAND_CODE_SET_IPA_VALVE_HEATER_POWER_PCT:
+      if (currentCommand.fields.value <= 100) {
+        engine.valves[ENGINE_IPA_VALVE_INDEX].heatpad->setDutyCycle_pct((struct Heater*)engine.valves[ENGINE_IPA_VALVE_INDEX].heatpad, currentCommand.fields.value);
+      }
+      break;
+    case ENGINE_COMMAND_CODE_SET_NOS_VALVE_HEATER_POWER_PCT:
+      if (currentCommand.fields.value <= 100) {
+        engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad->setDutyCycle_pct((struct Heater*)engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad, currentCommand.fields.value);
+      }
+      break;
+    case ENGINE_COMMAND_CODE_FIRE_IGNITER:
+      engine.currentState = ENGINE_STATE_IGNITION;
+      executeIgnitionCommand(HAL_GetTick());
+      break;
+    default:
+      break;
   }
-  else if (currentCommand.fields.header.bits.commandCode == ENGINE_COMMAND_CODE_OPEN_VALVE) {
-    //handleCurrentCommandLaunch();
-    uint8_t test = 0;
+}
+
+void handleCurrentCommandIgnite() {
+  switch (currentCommand.fields.header.bits.commandCode) {
+    case BOARD_COMMAND_CODE_SAFE:
+      engine.valves[ENGINE_NOS_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_NOS_VALVE_INDEX], HAL_GetTick());
+      engine.valves[ENGINE_IPA_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], HAL_GetTick());
+      engine.currentState = ENGINE_STATE_SAFE;
+      break;
+    case ENGINE_COMMAND_CODE_OPEN_VALVE:
+      engine.currentState = ENGINE_STATE_LAUNCH;
+      executeLaunchCommand(HAL_GetTick());
+      break;
+    default:
+      break;
   }
-  else if (currentCommand.fields.header.bits.commandCode == BOARD_COMMAND_CODE_ABORT) {
-    //handleCurrentCommandAbort();
-  }
-  else {
-    //engine.errorStatus.bits.invalidCommand = 1;
+}
+
+void handleCurrentCommandLaunch() {
+  switch (currentCommand.fields.header.bits.commandCode) {
+    case BOARD_COMMAND_CODE_SAFE:
+      engine.valves[ENGINE_NOS_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_NOS_VALVE_INDEX], HAL_GetTick());
+      engine.valves[ENGINE_IPA_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], HAL_GetTick());
+      engine.currentState = ENGINE_STATE_SAFE;
+      break;
+    default:
+      break;
   }
 }
 
@@ -450,7 +598,7 @@ void sendTelemetryPacket(uint32_t timestamp_ms) {
     filterTelemetryValues(i);
     telemetryPacket.fields.adcValues[i] = filteredTelemetryValues[i];
   }
-  telemetryPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)telemetryPacket.data, (sizeof(EngineTelemetryPacket) / sizeof(uint32_t)) - sizeof(uint32_t));
+  telemetryPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)telemetryPacket.data, (sizeof(EngineTelemetryPacket) / sizeof(uint32_t)) - sizeof(uint8_t));
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, telemetryPacket.data, sizeof(EngineTelemetryPacket));
 }
 
@@ -460,24 +608,26 @@ void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.status = engine.status;
   statusPacket.fields.valveStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status;
   statusPacket.fields.valveStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status;
-  statusPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)statusPacket.data, (sizeof(EngineStatusPacket) / sizeof(uint32_t)) - sizeof(uint32_t));
+  statusPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)statusPacket.data, (sizeof(EngineStatusPacket) / sizeof(uint32_t)) - sizeof(uint8_t));
 
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
 }
 
 void getReceivedCommand() {
-  for (uint8_t i = 0; i < sizeof(uart_rx_buffer) - sizeof(currentCommand) - 1; i++) {
-    currentCommand.data[0] = uart_rx_buffer[i];
-    currentCommand.data[1] = uart_rx_buffer[i + 1];
-    currentCommand.data[2] = uart_rx_buffer[i + 2];
-    currentCommand.data[3] = uart_rx_buffer[i + 3];
+  for (uint16_t i = 0; i < sizeof(uartRxBuffer) - sizeof(currentCommand) - 1; i++) {
+    currentCommand.data[0] = uartRxBuffer[i];
+    currentCommand.data[1] = uartRxBuffer[i + 1];
+    currentCommand.data[2] = uartRxBuffer[i + 2];
+    currentCommand.data[3] = uartRxBuffer[i + 3];
     if (currentCommand.fields.header.bits.type == BOARD_COMMAND_BROADCAST_TYPE_CODE || 
         (currentCommand.fields.header.bits.type == BOARD_COMMAND_UNICAST_TYPE_CODE &&
         currentCommand.fields.header.bits.boardId == ENGINE_BOARD_ID)) {
-      for (uint8_t j = 4; j < sizeof(BoardCommand); j++) {
-        currentCommand.data[j] = uart_rx_buffer[i + j];
+      for (uint16_t j = 4; j < sizeof(BoardCommand); j++) {
+        currentCommand.data[j] = uartRxBuffer[i + j];
         if (checkCommandCrc()) {
           i += sizeof(BoardCommand) - 1;
+          lastCommandTimestamp_ms = HAL_GetTick();
+          timeSinceLastCommand_ms = 0;
           handleCurrentCommand();
           break;
         } 
@@ -495,7 +645,7 @@ void filterTelemetryValues(uint8_t index) {
 }
 
 uint8_t checkCommandCrc() {
-  if (currentCommand.fields.crc != HAL_CRC_Calculate(engine.hcrc, (uint32_t*)currentCommand.data, (sizeof(BoardCommand) / sizeof(uint32_t)) - sizeof(uint32_t))) {
+  if (currentCommand.fields.crc != HAL_CRC_Calculate(engine.hcrc, (uint32_t*)currentCommand.data, (sizeof(BoardCommand) / sizeof(uint32_t)) - sizeof(uint8_t))) {
     return 0;
   }
   return 1;
@@ -505,6 +655,12 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {
   if (engine.adc->status.bits.dmaHalfFull == 0) {
     engine.adc->status.bits.dmaHalfFull = 1;
     adcHalfFullTimestamp_ms = HAL_GetTick();
+    if (activateStorageFlag) {
+      engine.isStoringData = 1;
+    }
+    else {
+      engine.isStoringData = 0;
+    }
   }
 }
 
@@ -517,8 +673,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART1) {
-    
     getReceivedCommand();
-    HAL_UART_Receive_DMA(huart, uart_rx_buffer, sizeof(uart_rx_buffer));
+    HAL_UART_Receive_DMA(huart, uartRxBuffer, sizeof(uartRxBuffer));
   }
 }
