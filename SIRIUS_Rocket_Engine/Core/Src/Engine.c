@@ -15,7 +15,7 @@ uint8_t activateStorageFlag = 0;
 
 uint16_t filteredTelemetryValues[16] = {0};
 
-uint8_t uartRxBuffer[220] = {0};
+uint8_t uartRxBuffer[132] = {0};
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeSafe(uint32_t timestamp_ms);
@@ -96,7 +96,7 @@ EngineTelemetryPacket telemetryPacket = {
   }
 };
 
-void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, Heater* heaters, Igniter* igniter, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc) {
+void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, Heater* heaters, Igniter* igniter, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, volatile EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc) {
   engine.errorStatus.value  = 0;
   engine.status.value       = 0;
   engine.currentState       = ENGINE_STATE_INIT;
@@ -403,7 +403,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
       }
 
       for (uint8_t i = 0; i < 16;i++) {
-        engine.sdCardBuffer->sdData[1].footer.signature[i] = 0;
+        engine.sdCardBuffer->sdData[1].footer.signature[i] = 0xFFFFFFFF;
       }
 
       engine.sdCardBuffer->sdData[1].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[1], (sizeof(EngineSDFormattedData) / sizeof(uint32_t)) -  sizeof(uint8_t));
@@ -432,7 +432,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
       }
 
       for (uint8_t i = 0; i < 16;i++) {
-        engine.sdCardBuffer->sdData[0].footer.signature[i] = 0;
+        engine.sdCardBuffer->sdData[0].footer.signature[i] = 0xFFFFFFFF;
       }
 
       engine.sdCardBuffer->sdData[0].footer.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)&engine.sdCardBuffer->sdData[0], (sizeof(EngineSDFormattedData) / sizeof(uint32_t)) -  sizeof(uint8_t));

@@ -88,7 +88,7 @@ typedef struct {
 }
 Engine;
 
-extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, Heater* heaters, Igniter* igniter, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc);
+extern void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, Heater* heaters, Igniter* igniter, TemperatureSensor* temperatureSensors, Telecommunication* telecom, Storage* storageDevices, volatile EngineSDCardBuffer* sdCardBuffer, CRC_HandleTypeDef* hcrc);
 
 extern void Engine_tick(uint32_t timestamp_ms);
 
