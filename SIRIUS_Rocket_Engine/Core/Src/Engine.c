@@ -9,6 +9,7 @@ uint16_t telemetryTimestampBufferIndex = 0;
 uint16_t telemetryBufferIndex = 0;
 
 uint32_t timeSinceLastCommand_ms = 0;
+uint32_t communicationRestartTimer_ms = 0;
 uint32_t lastCommandTimestamp_ms = 0;
 
 uint8_t activateStorageFlag = 0;
@@ -119,6 +120,10 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
   engine.storageDevices = storageDevices;
   engine.sdCardBufferPosition = 0;
 
+  timeSinceLastCommand_ms = 0;
+  lastCommandTimestamp_ms = 0;
+  communicationRestartTimer_ms = 0;
+
   engine.sdCardBuffer = sdCardBuffer;
 
   initValves();
@@ -136,8 +141,15 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
 
 void Engine_tick(uint32_t timestamp_ms) {
   timeSinceLastCommand_ms = timestamp_ms - lastCommandTimestamp_ms;
-  if (engine.currentState != ENGINE_STATE_ABORT && timeSinceLastCommand_ms > 30000) {
+  if (engine.currentState != ENGINE_STATE_ABORT && timeSinceLastCommand_ms > 60000) {
     engine.currentState = ENGINE_STATE_ABORT;
+  }
+  else {
+    if (timeSinceLastCommand_ms > communicationRestartTimer_ms + 3000) {
+      communicationRestartTimer_ms = timeSinceLastCommand_ms;
+      HAL_UART_DMAStop(engine.uart->externalHandle);
+      HAL_UART_Receive_DMA(engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
+    }
   }
   tickTemperatureSensors(timestamp_ms);
   tickValves(timestamp_ms);
@@ -628,6 +640,7 @@ void getReceivedCommand() {
           i += sizeof(BoardCommand) - 1;
           lastCommandTimestamp_ms = HAL_GetTick();
           timeSinceLastCommand_ms = 0;
+          communicationRestartTimer_ms = 0;
           handleCurrentCommand();
           break;
         } 
