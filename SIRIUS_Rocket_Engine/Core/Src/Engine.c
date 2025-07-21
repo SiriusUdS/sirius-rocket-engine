@@ -435,7 +435,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
       engine.sdCardBuffer->sdData[0].footer.valveErrorStatus[0] = engine.valves[0].errorStatus.value;
       engine.sdCardBuffer->sdData[0].footer.valveErrorStatus[1] = engine.valves[1].errorStatus.value;
       // Those are the BoardCommand
-      engine.sdCardBuffer->sdData[0].footer.currentCommand[0] = 0;
+      engine.sdCardBuffer->sdData[0].footer.currentCommand[0] = currentCommand.fields.header.value;
       engine.sdCardBuffer->sdData[0].footer.currentCommand[0] = 0;
       engine.sdCardBuffer->sdData[0].footer.currentCommand[0] = 0;
 
