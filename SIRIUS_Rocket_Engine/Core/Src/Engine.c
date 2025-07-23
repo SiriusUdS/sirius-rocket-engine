@@ -157,6 +157,7 @@ void Engine_tick(uint32_t timestamp_ms) {
   engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].tick((struct Storage*)&engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX], timestamp_ms);
   engine.igniter->tick((struct Igniter*)engine.igniter, timestamp_ms);
 
+  engine.status.bits.state = engine.currentState;
   handleDataStorage(timestamp_ms);
   handleTelecommunication(timestamp_ms);
 
@@ -212,7 +213,12 @@ void executeIgnition(uint32_t timestamp_ms) {
 }
 
 void executeLaunch(uint32_t timestamp_ms) {
-
+  if (timestamp_ms > statusPacket.fields.launchTimestamp_ms + (uint32_t)1800000) {
+    engine.currentState = ENGINE_STATE_ABORT;
+    engine.valves[ENGINE_NOS_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_NOS_VALVE_INDEX], timestamp_ms);
+    engine.valves[ENGINE_IPA_VALVE_INDEX].close((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], timestamp_ms);
+    activateStorageFlag = 0;
+  }
 }
 
 void executeAbort(uint32_t timestamp_ms) {
