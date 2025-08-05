@@ -717,11 +717,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SD_CARD_DETECT_PD_Pin */
-  GPIO_InitStruct.Pin = SD_CARD_DETECT_PD_Pin;
+  /*Configure GPIO pin : SD_CARD_DETECT_Pin */
+  GPIO_InitStruct.Pin = SD_CARD_DETECT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(SD_CARD_DETECT_PD_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(SD_CARD_DETECT_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : GPIO_OUTPUT_HEATPAD_NOS_Pin GPIO_OUTPUT_HEATPAD_IPA_Pin */
   GPIO_InitStruct.Pin = GPIO_OUTPUT_HEATPAD_NOS_Pin|GPIO_OUTPUT_HEATPAD_IPA_Pin;

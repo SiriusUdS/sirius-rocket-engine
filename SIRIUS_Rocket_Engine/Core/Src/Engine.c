@@ -141,16 +141,19 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
 
 void Engine_tick(uint32_t timestamp_ms) {
   timeSinceLastCommand_ms = timestamp_ms - lastCommandTimestamp_ms;
-  if (engine.currentState != ENGINE_STATE_ABORT && timeSinceLastCommand_ms > 60000) {
-    engine.currentState = ENGINE_STATE_ABORT;
-  }
-  else {
-    if (timeSinceLastCommand_ms > communicationRestartTimer_ms + 3000) {
-      communicationRestartTimer_ms = timeSinceLastCommand_ms;
-      HAL_UART_DMAStop(engine.uart->externalHandle);
-      HAL_UART_Receive_DMA(engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
+  //if (engine.currentState != ENGINE_STATE_ABORT && timeSinceLastCommand_ms > 60000) {
+  //  engine.currentState = ENGINE_STATE_ABORT;    
+  //}
+
+  if (timeSinceLastCommand_ms > communicationRestartTimer_ms + 3000) {
+    communicationRestartTimer_ms = timeSinceLastCommand_ms;
+    if (__HAL_UART_GET_FLAG((UART_HandleTypeDef*)engine.uart->externalHandle, UART_FLAG_ORE)) {
+      __HAL_UART_CLEAR_OREFLAG((UART_HandleTypeDef*)engine.uart->externalHandle);
     }
+    HAL_UART_DMAStop(engine.uart->externalHandle);
+    HAL_UART_Receive_DMA(engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
   }
+
   tickTemperatureSensors(timestamp_ms);
   tickValves(timestamp_ms);
   engine.telecommunication->tick((struct Telecommunication*)engine.telecommunication, timestamp_ms);
@@ -412,7 +415,7 @@ void handleDataStorage(uint32_t timestamp_ms) {
       engine.sdCardBuffer->sdData[1].footer.valveStatus[1] = engine.valves[1].status.value;
       engine.sdCardBuffer->sdData[1].footer.valveErrorStatus[0] = engine.valves[0].errorStatus.value;
       engine.sdCardBuffer->sdData[1].footer.valveErrorStatus[1] = engine.valves[1].errorStatus.value;
-      engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
+      engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = currentCommand.fields.header.value;
       engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
       engine.sdCardBuffer->sdData[1].footer.currentCommand[0] = 0;
 
@@ -624,6 +627,7 @@ void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.timestamp_ms = timestamp_ms;
   statusPacket.fields.errorStatus = engine.errorStatus;
   statusPacket.fields.status = engine.status;
+  statusPacket.fields.timeSinceLastCommand_ms = timeSinceLastCommand_ms;
   statusPacket.fields.valveStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status;
   statusPacket.fields.valveStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status;
   statusPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)statusPacket.data, (sizeof(EngineStatusPacket) / sizeof(uint32_t)) - sizeof(uint8_t));
@@ -644,12 +648,13 @@ void getReceivedCommand() {
         currentCommand.data[j] = uartRxBuffer[i + j];
         if (checkCommandCrc()) {
           i += sizeof(BoardCommand) - 1;
+          statusPacket.fields.lastReceivedCommandCode = currentCommand.fields.header.bits.commandCode;
           lastCommandTimestamp_ms = HAL_GetTick();
           timeSinceLastCommand_ms = 0;
           communicationRestartTimer_ms = 0;
           handleCurrentCommand();
           break;
-        } 
+        }
       }
     }
   }

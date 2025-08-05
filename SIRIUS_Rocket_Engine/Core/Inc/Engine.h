@@ -38,7 +38,7 @@
 
 #define FUNCTION_NULL_POINTER 0
 
-#define TIME_BETWEEN_TELEMETRY_PACKETS_MS        (uint16_t)91
+#define TIME_BETWEEN_TELEMETRY_PACKETS_MS        (uint16_t)180
 #define TELEMETRY_PACKETS_BETWEEN_STATUS_PACKETS (uint16_t)5
 
 #define FILTER_TELEMETRY_OFFSET (((sizeof(EngineSDCardBuffer) / 2)/sizeof(uint16_t)) / 64)
