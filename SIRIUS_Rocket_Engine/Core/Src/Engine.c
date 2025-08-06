@@ -640,8 +640,9 @@ void sendStatusPacket(uint32_t timestamp_ms) {
 }
 
 void getReceivedCommand() {
-  for (uint16_t i = uartRxHalfReady ? 0 : sizeof(uartRxBuffer) / 2 - sizeof(currentCommand) - 1;
-    i < uartRxHalfReady ? (sizeof(uartRxBuffer) / 2) - sizeof(currentCommand) - 1 : sizeof(uartRxBuffer) - sizeof(currentCommand) - 1; i++) {
+  uint16_t startValue = uartRxHalfReady ? 0 : sizeof(uartRxBuffer) / 2 - sizeof(currentCommand) - 1;
+  uint16_t endValue = uartRxHalfReady ? sizeof(uartRxBuffer) / 2 - sizeof(currentCommand) - 1 : sizeof(uartRxBuffer) - sizeof(currentCommand) - 1;
+  for (uint16_t i = startValue;i < endValue; i++) {
     currentCommand.data[0] = uartRxBuffer[i];
     currentCommand.data[1] = uartRxBuffer[i + 1];
     currentCommand.data[2] = uartRxBuffer[i + 2];
