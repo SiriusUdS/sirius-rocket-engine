@@ -580,6 +580,16 @@ void handleCurrentCommandUnsafe() {
         engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad->setDutyCycle_pct((struct Heater*)engine.valves[ENGINE_NOS_VALVE_INDEX].heatpad, currentCommand.fields.value);
       }
       break;
+    case ENGINE_COMMAND_CODE_OPEN_NOS_VALVE_PCT:
+      if (currentCommand.fields.value <= 100) {
+        engine.valves[ENGINE_NOS_VALVE_INDEX].setDutyCycle((struct Valve*)&engine.valves[ENGINE_NOS_VALVE_INDEX], currentCommand.fields.value, HAL_GetTick());
+      }
+      break;
+    case ENGINE_COMMAND_CODE_OPEN_IPA_VALVE_PCT:
+      if (currentCommand.fields.value <= 100) {
+        engine.valves[ENGINE_IPA_VALVE_INDEX].setDutyCycle((struct Valve*)&engine.valves[ENGINE_IPA_VALVE_INDEX], currentCommand.fields.value, HAL_GetTick());
+      }
+      break;
     case ENGINE_COMMAND_CODE_FIRE_IGNITER:
       engine.currentState = ENGINE_STATE_IGNITION;
       executeIgnitionCommand(HAL_GetTick());
