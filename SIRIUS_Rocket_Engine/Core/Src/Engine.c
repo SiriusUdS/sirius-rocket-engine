@@ -16,7 +16,9 @@ uint8_t activateStorageFlag = 0;
 
 uint16_t filteredTelemetryValues[16] = {0};
 
-uint8_t uartRxBuffer[132] = {0};
+uint8_t uartRxBuffer[176] = {0};
+uint8_t uartRxHalfReady = 0;
+uint8_t uartRxCpltReady = 0;
 
 static void executeInit(uint32_t timestamp_ms);
 static void executeSafe(uint32_t timestamp_ms);
@@ -141,9 +143,11 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
 
 void Engine_tick(uint32_t timestamp_ms) {
   timeSinceLastCommand_ms = timestamp_ms - lastCommandTimestamp_ms;
-  //if (engine.currentState != ENGINE_STATE_ABORT && timeSinceLastCommand_ms > 60000) {
-  //  engine.currentState = ENGINE_STATE_ABORT;    
-  //}
+  if (timeSinceLastCommand_ms > 30000) {
+    for (;;) {
+      // Wait for watchdog to reset the system
+    }
+  }
 
   if (timeSinceLastCommand_ms > communicationRestartTimer_ms + 3000) {
     communicationRestartTimer_ms = timeSinceLastCommand_ms;
@@ -237,7 +241,6 @@ void executeAbortCommand(uint32_t timestamp_ms) {
 void executeIgnitionCommand(uint32_t timestamp_ms) {
   engine.igniter->ignite((struct Igniter*)engine.igniter, timestamp_ms);
   statusPacket.fields.igniteTimestamp_ms = timestamp_ms;
-  activateStorageFlag = 1;
 }
 
 void executeLaunchCommand(uint32_t timestamp_ms) {
@@ -543,6 +546,7 @@ void handleCurrentCommandSafe() {
   switch (currentCommand.fields.header.bits.commandCode) {
     case BOARD_COMMAND_CODE_UNSAFE:
       engine.currentState = ENGINE_STATE_UNSAFE;
+      activateStorageFlag = 1;
       break;
     case ENGINE_COMMAND_CODE_SET_IPA_VALVE_HEATER_POWER_PCT:
       if (currentCommand.fields.value <= 100) {
@@ -636,7 +640,8 @@ void sendStatusPacket(uint32_t timestamp_ms) {
 }
 
 void getReceivedCommand() {
-  for (uint16_t i = 0; i < sizeof(uartRxBuffer) - sizeof(currentCommand) - 1; i++) {
+  for (uint16_t i = uartRxHalfReady ? 0 : sizeof(uartRxBuffer) / 2 - sizeof(currentCommand) - 1;
+    i < uartRxHalfReady ? (sizeof(uartRxBuffer) / 2) - sizeof(currentCommand) - 1 : sizeof(uartRxBuffer) - sizeof(currentCommand) - 1; i++) {
     currentCommand.data[0] = uartRxBuffer[i];
     currentCommand.data[1] = uartRxBuffer[i + 1];
     currentCommand.data[2] = uartRxBuffer[i + 2];
@@ -657,6 +662,12 @@ void getReceivedCommand() {
         }
       }
     }
+  }
+  if (uartRxCpltReady) {
+    uartRxCpltReady = 0;
+  }
+  else {
+    uartRxHalfReady = 0;
   }
 }
 
@@ -697,7 +708,14 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART1) {
+    uartRxCpltReady = 1;
     getReceivedCommand();
-    HAL_UART_Receive_DMA(huart, uartRxBuffer, sizeof(uartRxBuffer));
+  }
+}
+
+void HAL_UART_RxHalfCpltCallback(UART_HandleTypeDef *huart) {
+  if(huart->Instance == USART1) {
+    uartRxHalfReady = 1;
+    getReceivedCommand();
   }
 }
