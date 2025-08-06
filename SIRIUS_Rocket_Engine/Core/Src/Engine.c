@@ -644,6 +644,8 @@ void sendStatusPacket(uint32_t timestamp_ms) {
   statusPacket.fields.timeSinceLastCommand_ms = timeSinceLastCommand_ms;
   statusPacket.fields.valveStatus[ENGINE_NOS_VALVE_INDEX] = engine.valves[ENGINE_NOS_VALVE_INDEX].status;
   statusPacket.fields.valveStatus[ENGINE_IPA_VALVE_INDEX] = engine.valves[ENGINE_IPA_VALVE_INDEX].status;
+  statusPacket.fields.storageStatus = engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].status;
+  statusPacket.fields.storageErrorStatus = engine.storageDevices[ENGINE_STORAGE_SD_CARD_INDEX].errorStatus;
   statusPacket.fields.crc = HAL_CRC_Calculate(engine.hcrc, (uint32_t*)statusPacket.data, (sizeof(EngineStatusPacket) / sizeof(uint32_t)) - sizeof(uint8_t));
 
   engine.telecommunication->sendData((struct Telecommunication*)engine.telecommunication, statusPacket.data, sizeof(EngineStatusPacket));
