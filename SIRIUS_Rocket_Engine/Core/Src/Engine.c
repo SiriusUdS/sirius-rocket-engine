@@ -204,7 +204,8 @@ void executeInit(uint32_t timestamp_ms) {
   }
   engine.currentState = ENGINE_STATE_SAFE;
 
-  engine.telecommunication->config((struct Telecommunication*) engine.telecommunication);
+  //engine.telecommunication->config((struct Telecommunication*) engine.telecommunication);
+  HAL_UART_Receive_DMA(engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
 }
 
 void executeSafe(uint32_t timestamp_ms) {
@@ -298,7 +299,6 @@ void initUART() {
   }
 
   engine.uart->init((struct UART*)engine.uart);
-  HAL_UART_Receive_DMA(engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
 }
 
 void initValves() {
