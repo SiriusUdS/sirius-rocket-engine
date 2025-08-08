@@ -143,7 +143,7 @@ void Engine_init(PWM* pwms, ADC12* adc, GPIO* gpios, UART* uart, Valve* valves, 
 
 void Engine_tick(uint32_t timestamp_ms) {
   timeSinceLastCommand_ms = timestamp_ms - lastCommandTimestamp_ms;
-  if (timeSinceLastCommand_ms > 30000) {
+  if ((int32_t)timeSinceLastCommand_ms > (int32_t)30000) {
     for (;;) {
       // Wait for watchdog to reset the system
     }
@@ -652,8 +652,9 @@ void sendStatusPacket(uint32_t timestamp_ms) {
 }
 
 void getReceivedCommand() {
-  uint16_t startValue = uartRxHalfReady ? 0 : sizeof(uartRxBuffer) / 2 - sizeof(currentCommand) - 1;
-  uint16_t endValue = uartRxHalfReady ? sizeof(uartRxBuffer) / 2 - sizeof(currentCommand) - 1 : sizeof(uartRxBuffer) - sizeof(currentCommand) - 1;
+  uint16_t startValue = uartRxHalfReady ? 0 : sizeof(uartRxBuffer) / 2;
+  uint16_t endValue = uartRxHalfReady ? (sizeof(uartRxBuffer) / 2) - sizeof(currentCommand) - 1 : sizeof(uartRxBuffer) - sizeof(currentCommand) - 1;
+  
   for (uint16_t i = startValue;i < endValue; i++) {
     currentCommand.data[0] = uartRxBuffer[i];
     currentCommand.data[1] = uartRxBuffer[i + 1];
@@ -723,6 +724,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
   if (huart->Instance == USART1) {
     uartRxCpltReady = 1;
     getReceivedCommand();
+    HAL_UART_Receive_DMA(engine.uart->externalHandle, uartRxBuffer, sizeof(uartRxBuffer));
   }
 }
 

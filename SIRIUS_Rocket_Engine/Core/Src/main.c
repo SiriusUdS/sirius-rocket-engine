@@ -766,25 +766,25 @@ void setupGPIOs() {
 
   gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX].errorStatus.bits.notInitialized = 1;
   gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX].externalHandle = GPIOE;
-  gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX].pinNumber = GPIO_PIN_7;
+  gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX].pinNumber = GPIO_PIN_9;
   gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX].mode = GPIO_INPUT_MODE;
   gpios[ENGINE_NOS_VALVE_CLOSED_GPIO_INDEX].init = (GPIO_init)GPIOHAL_init;
 
   gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX].errorStatus.bits.notInitialized = 1;
   gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX].externalHandle = GPIOE;
-  gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX].pinNumber = GPIO_PIN_8;
+  gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX].pinNumber = GPIO_PIN_10;
   gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX].mode = GPIO_INPUT_MODE;
   gpios[ENGINE_NOS_VALVE_OPENED_GPIO_INDEX].init = (GPIO_init)GPIOHAL_init;
 
   gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX].errorStatus.bits.notInitialized = 1;
   gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX].externalHandle = GPIOE;
-  gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX].pinNumber = GPIO_PIN_10;
+  gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX].pinNumber = GPIO_PIN_7;
   gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX].mode = GPIO_INPUT_MODE;
   gpios[ENGINE_IPA_VALVE_CLOSED_GPIO_INDEX].init = (GPIO_init)GPIOHAL_init;
 
   gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX].errorStatus.bits.notInitialized = 1;
   gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX].externalHandle = GPIOE;
-  gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX].pinNumber = GPIO_PIN_9;
+  gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX].pinNumber = GPIO_PIN_8;
   gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX].mode = GPIO_INPUT_MODE;
   gpios[ENGINE_IPA_VALVE_OPENED_GPIO_INDEX].init = (GPIO_init)GPIOHAL_init;
 
@@ -818,13 +818,13 @@ void setupPWMs() {
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].init = (PWM_init)PWMHAL_init;
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].externalHandle = &htim4;
   pwms[ENGINE_IPA_VALVE_PWM_INDEX].timer = TIM4;
-  pwms[ENGINE_IPA_VALVE_PWM_INDEX].channel = TIM_CHANNEL_3;
+  pwms[ENGINE_IPA_VALVE_PWM_INDEX].channel = TIM_CHANNEL_2;
 
   pwms[ENGINE_NOS_VALVE_PWM_INDEX].errorStatus.bits.notInitialized = 1;
   pwms[ENGINE_NOS_VALVE_PWM_INDEX].init = (PWM_init)PWMHAL_init;
   pwms[ENGINE_NOS_VALVE_PWM_INDEX].externalHandle = &htim4;
   pwms[ENGINE_NOS_VALVE_PWM_INDEX].timer = TIM4;
-  pwms[ENGINE_NOS_VALVE_PWM_INDEX].channel = TIM_CHANNEL_2;
+  pwms[ENGINE_NOS_VALVE_PWM_INDEX].channel = TIM_CHANNEL_3;
 }
 
 void setupADC() {
