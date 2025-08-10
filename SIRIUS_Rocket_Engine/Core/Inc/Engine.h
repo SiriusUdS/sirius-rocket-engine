@@ -43,11 +43,11 @@
 
 #define FILTER_TELEMETRY_OFFSET (((sizeof(EngineSDCardBuffer) / 2)/sizeof(uint16_t)) / 64)
 
-#define NOS_VALVE_OPEN_DUTY_CYCLE_PCT   (uint16_t)26
-#define NOS_VALVE_CLOSED_DUTY_CYCLE_PCT (uint16_t)54
+#define NOS_VALVE_OPEN_DUTY_CYCLE_PCT   (uint16_t)54
+#define NOS_VALVE_CLOSED_DUTY_CYCLE_PCT (uint16_t)26
 
-#define IPA_VALVE_OPEN_DUTY_CYCLE_PCT   (uint16_t)60
-#define IPA_VALVE_CLOSED_DUTY_CYCLE_PCT (uint16_t)20
+#define IPA_VALVE_OPEN_DUTY_CYCLE_PCT   (uint16_t)20
+#define IPA_VALVE_CLOSED_DUTY_CYCLE_PCT (uint16_t)60
 
 typedef struct {
   EngineErrorStatus errorStatus;
